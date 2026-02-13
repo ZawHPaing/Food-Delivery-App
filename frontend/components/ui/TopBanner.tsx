@@ -31,10 +31,16 @@ export default function TopBanner() {
         </div>
         <div className="flex items-center space-x-3">
           <Link 
+            href="/restaurant_module"
+            className="border-2 border-white px-4 py-1.5 rounded-lg font-semibold text-sm md:text-base hover:bg-white/10 transition-colors"
+          >
+            RESTAURANT PORTAL
+          </Link>
+          <Link 
             href="/delivery_module/landing"
             className="border-2 border-white px-4 py-1.5 rounded-lg font-semibold text-sm md:text-base hover:bg-white/10 transition-colors"
           >
-            PARTNER WITH US
+            JOIN AS RIDER
           </Link>
           <button
             onClick={() => setIsVisible(false)}
