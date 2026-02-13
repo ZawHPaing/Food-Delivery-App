@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 export default function TopBanner() {
   const [isVisible, setIsVisible] = useState(true);
@@ -29,9 +30,12 @@ export default function TopBanner() {
           </span>
         </div>
         <div className="flex items-center space-x-3">
-          <button className="border-2 border-white px-4 py-1.5 rounded-lg font-semibold text-sm md:text-base hover:bg-white/10 transition-colors">
+          <Link 
+            href="/delivery_module/landing"
+            className="border-2 border-white px-4 py-1.5 rounded-lg font-semibold text-sm md:text-base hover:bg-white/10 transition-colors"
+          >
             PARTNER WITH US
-          </button>
+          </Link>
           <button
             onClick={() => setIsVisible(false)}
             className="p-1 hover:bg-white/10 rounded-full transition-colors"

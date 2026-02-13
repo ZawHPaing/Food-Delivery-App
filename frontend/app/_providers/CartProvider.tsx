@@ -36,6 +36,13 @@ interface CartContextValue extends CartState {
   deliveryFeeCents: number;
   totalCents: number;
   
+  // Sidebar state
+  isCartOpen: boolean;
+  setIsCartOpen: (isOpen: boolean) => void;
+  openCart: () => void;
+  closeCart: () => void;
+  toggleCart: () => void;
+  
   // Helpers
   getItemQuantity: (menuItemId: number) => number;
   isItemInCart: (menuItemId: number) => boolean;
@@ -158,6 +165,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 // Provider
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+  const [isCartOpen, setIsCartOpen] = React.useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -200,6 +208,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<CartContextValue>(() => ({
     ...state,
     ...computedValues,
+    isCartOpen,
+    setIsCartOpen,
+    openCart: () => setIsCartOpen(true),
+    closeCart: () => setIsCartOpen(false),
+    toggleCart: () => setIsCartOpen(prev => !prev),
     
     addItem: (menuItem, restaurant, quantity, specialInstructions) => {
       dispatch({
@@ -232,7 +245,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isItemInCart: (menuItemId) => {
       return state.items.some(i => i.menuItem.id === menuItemId);
     },
-  }), [state, computedValues]);
+  }), [state, computedValues, isCartOpen]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

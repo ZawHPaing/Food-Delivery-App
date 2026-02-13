@@ -320,7 +320,7 @@ export default function RestaurantsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {sortedRestaurants.map((restaurant) => (
-              <Link key={restaurant.id} href={`/restaurant/${restaurant.id}`}>
+              <Link key={restaurant.id} href={`/consumer_module/restaurant/${restaurant.id}`}>
                 <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group h-full">
                   {/* Image */}
                   <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-[#e4002b] to-[#ff6600]">

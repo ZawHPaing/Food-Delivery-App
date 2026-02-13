@@ -26,7 +26,7 @@ export default function RestaurantCard({
   isPromoted = false,
 }: RestaurantCardProps) {
   return (
-    <Link href={`/restaurant/${id}`}>
+    <Link href={`/consumer_module/restaurant/${id}`}>
       <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group">
         {/* Image Container */}
         <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-[#e4002b] to-[#ff6600]">

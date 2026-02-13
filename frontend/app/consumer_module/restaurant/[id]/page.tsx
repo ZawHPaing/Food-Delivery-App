@@ -87,7 +87,7 @@ export default function RestaurantPage({ params }: PageProps) {
 
         {/* Back Button */}
         <Link
-          href="/"
+          href="/consumer_module"
           className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
         >
           <svg

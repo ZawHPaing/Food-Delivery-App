@@ -38,7 +38,7 @@ export default function CheckoutPage() {
   // Redirect if cart is empty
   useEffect(() => {
     if (items.length === 0) {
-      router.push("/");
+      router.push("/consumer_module");
     }
   }, [items, router]);
 
@@ -61,7 +61,7 @@ export default function CheckoutPage() {
     // Clear cart and redirect to success page (or home with success message)
     clearCart();
     alert("Order placed successfully! (This is a demo)");
-    router.push("/");
+    router.push("/consumer_module");
   };
 
   if (items.length === 0) {
@@ -74,7 +74,7 @@ export default function CheckoutPage() {
         {/* Header */}
         <div className="mb-8 flex items-center gap-4">
           <Link
-            href="/"
+            href="/consumer_module"
             className="p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-all text-gray-600 hover:text-[#e4002b]"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

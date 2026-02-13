@@ -49,7 +49,7 @@ export default function ProfilePage() {
           <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-md border border-gray-200 p-6">
             <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
             <p className="text-gray-600 mt-2">You need to log in to edit your profile.</p>
-            <Link href="/" className="inline-block mt-6 text-[#e4002b] font-semibold hover:underline">
+            <Link href="/consumer_module" className="inline-block mt-6 text-[#e4002b] font-semibold hover:underline">
               Back to home
             </Link>
           </div>
@@ -64,7 +64,7 @@ export default function ProfilePage() {
         <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-md border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Edit Profile</h1>
-            <Link href="/" className="text-sm text-gray-600 hover:text-[#e4002b] transition-colors">
+            <Link href="/consumer_module" className="text-sm text-gray-600 hover:text-[#e4002b] transition-colors">
               Back
             </Link>
           </div>

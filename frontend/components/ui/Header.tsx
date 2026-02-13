@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import LoginOverlay from "./LoginOverlay";
 import SignupOverlay from "./SignupOverlay";
+import CartSidebar from "./CartSidebar";
 import { useAuth } from "@/app/_providers/AuthProvider";
+import { useCart } from "@/app/_providers/CartProvider";
 
 export default function Header() {
   const [selectedLocation, setSelectedLocation] = useState("Yangon");
@@ -15,11 +17,11 @@ export default function Header() {
   const [showSignupOverlay, setShowSignupOverlay] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [cartItems, setCartItems] = useState<string[]>([]);
   const locationRef = useRef<HTMLDivElement>(null);
   const languageRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, user, loginMock, logout } = useAuth();
+  const { itemCount, isCartOpen, openCart, closeCart } = useCart();
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -93,9 +95,7 @@ export default function Header() {
   };
 
   const handleCartClick = () => {
-    // Add demo item to cart for testing
-    setCartItems(prev => [...prev, `item-${Date.now()}`]);
-    console.log("Cart clicked. Current items:", cartItems.length + 1);
+    openCart();
   };
 
   const locations = ["Yangon", "Mandalay", "Naypyidaw", "Bago", "Mawlamyine"];
@@ -108,7 +108,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/consumer_module" className="flex items-center space-x-2">
             <div className="flex items-center space-x-2">
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center shadow-md">
                 <span className="text-white font-bold text-xl">F</span>
@@ -120,13 +120,13 @@ export default function Header() {
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center space-x-6">
             <Link 
-              href="/" 
+              href="/consumer_module" 
               className="text-gray-700 hover:text-[#e4002b] transition-colors font-medium"
             >
               Home
             </Link>
             <Link 
-              href="/restaurants" 
+              href="/consumer_module/restaurants" 
               className="text-gray-700 hover:text-[#e4002b] transition-colors font-medium"
             >
               Restaurants
@@ -251,7 +251,7 @@ export default function Header() {
                       </button>
 
                       <Link
-                        href="/profile"
+                        href="/consumer_module/profile"
                         onClick={() => setShowProfileDropdown(false)}
                         className="w-full px-4 py-3 flex items-center space-x-3 text-gray-800 hover:bg-gray-50 transition-colors"
                       >
@@ -382,7 +382,7 @@ export default function Header() {
                 />
               </svg>
               <span className="absolute top-0 right-0 h-5 w-5 bg-[#ff6600] text-white text-xs rounded-full flex items-center justify-center">
-                {cartItems.length}
+                {itemCount}
               </span>
             </button>
 
@@ -430,6 +430,10 @@ export default function Header() {
         onClose={handleCloseOverlays}
         onSwitchToLogin={handleSwitchToLogin}
         onLoginSuccess={handleLoginSuccess}
+      />
+      <CartSidebar 
+        isOpen={isCartOpen}
+        onClose={closeCart}
       />
     </header>
   );
