@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 #kssl
 from .delivery_signUp import router as delivery_router
-
+from .delivery_login import router as delivery_login_router
+from .delivery_profile import router as delivery_profile_router
 
 app = FastAPI(title="Food Delivery Backend")
 
@@ -16,7 +17,8 @@ app.add_middleware(
 )
 #kssl
 app.include_router(delivery_router)
-
+app.include_router(delivery_login_router)
+app.include_router(delivery_profile_router)
 
 @app.get("/")
 def root():
