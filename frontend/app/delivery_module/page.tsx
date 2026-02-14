@@ -9,6 +9,9 @@ import { Package, Bike, Map as MapIcon, ChevronUp, GripHorizontal } from 'lucide
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import LoginOverlay from '@/components/ui/LoginOverlay';
+import SignupOverlay from '@/components/ui/SignupOverlay';
+import { useAuth } from '@/app/_providers/AuthProvider';
 
 export default function Dashboard() {
   const {
@@ -26,6 +29,9 @@ export default function Dashboard() {
   } = useDeliveryState();
 
   const [showMap, setShowMap] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const { isLoggedIn, loginMock, logout } = useAuth();
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-slate-50">
@@ -43,6 +49,22 @@ export default function Dashboard() {
                 </h1>
                 <p className="text-xs text-muted-foreground font-medium">Driver Console</p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {!isLoggedIn ? (
+                <>
+                  <Button variant="ghost" onClick={() => setShowLogin(true)} className="rounded-xl">
+                    Log in
+                  </Button>
+                  <Button onClick={() => setShowSignup(true)} className="rounded-xl bg-gradient-to-r from-[#e4002b] to-[#ff6600] border-none">
+                    Sign up
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" onClick={logout} className="rounded-xl">
+                  Log out
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -163,6 +185,27 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </main>
+      {/* Auth Modals */}
+      <LoginOverlay
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSwitchToSignup={() => {
+          setShowLogin(false);
+          setShowSignup(true);
+        }}
+        onLoginSuccess={() => {
+          loginMock();
+          setShowLogin(false);
+        }}
+      />
+      <SignupOverlay
+        isOpen={showSignup}
+        onClose={() => setShowSignup(false)}
+        onSwitchToLogin={() => {
+          setShowSignup(false);
+          setShowLogin(true);
+        }}
+      />
     </div>
   );
 }

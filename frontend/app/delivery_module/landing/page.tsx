@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight, CheckCircle2, MapPin, Smartphone, Bike, User, DollarSign, Clock, Gift } from "lucide-react";
+import LoginOverlay from "@/components/ui/LoginOverlay";
+import SignupOverlay from "@/components/ui/SignupOverlay";
+import { useAuth } from "@/app/_providers/AuthProvider";
 
 export default function DeliveryLandingPage() {
   const [city, setCity] = useState("");
@@ -12,6 +15,9 @@ export default function DeliveryLandingPage() {
   const [phone, setPhone] = useState("");
   const [is18, setIs18] = useState<boolean | null>(null);
   const [agreed, setAgreed] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const { isLoggedIn, loginMock, logout } = useAuth();
 
   const showExtendedForm = city !== "" && vehicle !== "";
 
@@ -26,19 +32,31 @@ export default function DeliveryLandingPage() {
             </div>
             <span className="text-2xl font-bold text-[#e4002b] tracking-tight">Foodie</span>
           </Link>
-          {/* 
-          <div className="flex items-center gap-4">
-            <button className="hidden md:block text-sm font-semibold text-gray-600 hover:text-[#e4002b] transition-colors">
-              Login
-            </button>
-            <Link 
-              href="/delivery_module"
-              className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white px-6 py-2.5 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-orange-200 active:scale-95 transition-all"
-            >
-              Start Earning
-            </Link>
+          <div className="flex items-center gap-3">
+            {!isLoggedIn ? (
+              <>
+                <button
+                  onClick={() => setShowLogin(true)}
+                  className="text-sm font-semibold text-gray-600 hover:text-[#e4002b] transition-colors"
+                >
+                  Log in
+                </button>
+                <button
+                  onClick={() => setShowSignup(true)}
+                  className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white px-5 py-2 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-orange-200 active:scale-95 transition-all"
+                >
+                  Sign up
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={logout}
+                className="text-sm font-semibold text-gray-600 hover:text-[#e4002b] transition-colors"
+              >
+                Log out
+              </button>
+            )}
           </div>
-          */}
         </div>
       </nav>
 
@@ -400,6 +418,27 @@ export default function DeliveryLandingPage() {
           </div>
         </div>
       </footer>
+      {/* Auth Modals */}
+      <LoginOverlay
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSwitchToSignup={() => {
+          setShowLogin(false);
+          setShowSignup(true);
+        }}
+        onLoginSuccess={() => {
+          loginMock();
+          setShowLogin(false);
+        }}
+      />
+      <SignupOverlay
+        isOpen={showSignup}
+        onClose={() => setShowSignup(false)}
+        onSwitchToLogin={() => {
+          setShowSignup(false);
+          setShowLogin(true);
+        }}
+      />
     </div>
   );
 }

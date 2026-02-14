@@ -2,14 +2,15 @@
 
 import { useEffect } from 'react';
 import { BottomNav } from '@/components/delivery/BottomNav';
+import { usePathname } from 'next/navigation';
 
 export default function DeliveryLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   useEffect(() => {
-    // Force light mode on html and body elements
     document.documentElement.classList.remove('dark');
     document.documentElement.classList.add('light');
     document.documentElement.style.colorScheme = 'light';
@@ -17,7 +18,6 @@ export default function DeliveryLayout({
     document.body.classList.remove('dark');
     document.body.classList.add('light');
 
-    // Ensure meta tag for color-scheme exists
     let meta = document.querySelector('meta[name="color-scheme"]');
     if (!meta) {
       meta = document.createElement('meta');
@@ -26,7 +26,6 @@ export default function DeliveryLayout({
     }
     meta.setAttribute('content', 'light');
     
-    // Cleanup if needed
     return () => {
     };
   }, []);
@@ -34,7 +33,7 @@ export default function DeliveryLayout({
   return (
     <div className="min-h-screen bg-background light" style={{ colorScheme: 'light' }}>
       {children}
-      <BottomNav />
+      {!pathname?.startsWith('/delivery_module/landing') && <BottomNav />}
     </div>
   );
 }
