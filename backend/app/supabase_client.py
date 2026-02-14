@@ -1,5 +1,5 @@
 from supabase import create_client, Client
-import config
+from .config import SUPABASE_URL, SUPABASE_KEY
 
 # Initialize the client
-supabase: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
