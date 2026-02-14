@@ -10,8 +10,13 @@ export default function DeliveryLandingPage() {
   const [name, setName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [licensePlate, setLicensePlate] = useState("");
   const [is18, setIs18] = useState<boolean | null>(null);
   const [agreed, setAgreed] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const showExtendedForm = city !== "" && vehicle !== "";
 
@@ -96,7 +101,38 @@ export default function DeliveryLandingPage() {
                   <h3 className="text-2xl font-bold mb-2">Apply Now</h3>
                   <p className="text-orange-50 text-sm">Fill in your details to get started</p>
                 </div>
-                <form className="p-8 space-y-6">
+                <form className="p-8 space-y-6" onSubmit={async (e) => {
+                  e.preventDefault();
+                  setMessage(null);
+                  if (!agreed) { setMessage('You must agree to terms.'); return; }
+                  if (is18 !== true) { setMessage('You must be 18 or older to apply.'); return; }
+                  setLoading(true);
+                  try {
+                    const body = {
+                      first_name: name,
+                      last_name: lastName,
+                      email,
+                      phone,
+                      password,
+                      city,
+                      vehicle,
+                      license_plate: licensePlate
+                    };
+                    const res = await fetch('http://localhost:8000/delivery/sign_up', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(body)
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                      setMessage(data?.error || JSON.stringify(data));
+                    } else {
+                      setMessage('Signup successful!');
+                    }
+                  } catch (err: any) {
+                    setMessage(err.message || String(err));
+                  } finally { setLoading(false); }
+                }}>
                   <div className="space-y-4">
                     <div className="relative">
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">
@@ -157,6 +193,30 @@ export default function DeliveryLandingPage() {
                           />
                         </div>
 
+                        <input
+                          type="email"
+                          placeholder="Email"
+                          className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
+
+                        <input
+                          type="password"
+                          placeholder="Password"
+                          className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+
+                        <input
+                          type="text"
+                          placeholder="License plate"
+                          className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          value={licensePlate}
+                          onChange={(e) => setLicensePlate(e.target.value)}
+                        />
+
                         <div className="flex gap-2">
                           <div className="w-24 px-4 py-4 bg-gray-50 border-2 border-transparent rounded-2xl font-medium text-gray-500 flex items-center justify-between">
                             <span>+95</span>
@@ -204,12 +264,17 @@ export default function DeliveryLandingPage() {
                     )}
                   </div>
 
-                  <Link
-                    href="/delivery_module"
+                  <button
+                    type="submit"
                     className="block w-full bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white py-5 rounded-2xl font-bold text-center hover:shadow-xl hover:shadow-orange-100 active:scale-[0.98] transform transition-all"
+                    disabled={loading}
                   >
-                    Submit Application
-                  </Link>
+                    {loading ? 'Submitting...' : 'Submit Application'}
+                  </button>
+
+                  {message && (
+                    <p className="text-center text-sm mt-2 text-gray-700">{message}</p>
+                  )}
 
                   <p className="text-center text-[10px] text-gray-400 leading-relaxed px-4">
                     By continuing, you agree to our Terms of Service and Privacy Policy. 
