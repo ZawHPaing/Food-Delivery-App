@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from '@/app/_providers/AuthProvider';
 
 interface SignupOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
+  onLoginSuccess?: (email: string) => void;
 }
 
-export default function SignupOverlay({ isOpen, onClose, onSwitchToLogin }: SignupOverlayProps) {
+export default function SignupOverlay({ isOpen, onClose, onSwitchToLogin, onLoginSuccess }: SignupOverlayProps) {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -43,14 +46,42 @@ export default function SignupOverlay({ isOpen, onClose, onSwitchToLogin }: Sign
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const fullPhone = "+95" + formData.phone.replace(/\D/g, "");
-      console.log("Signup attempt:", { ...formData, phone: fullPhone });
+    const fullPhone = "+95" + formData.phone.replace(/\D/g, "");
+
+    try {
+      const payload = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        phone: fullPhone,
+        password: formData.password,
+        city: "",
+        vehicle: "Bike",
+        license_plate: "",
+      };
+
+      const res = await fetch("http://localhost:8000/delivery/sign_up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        const err = data?.error || data?.detail || "Signup failed";
+        throw new Error(err);
+      }
+
+      try {
+        await login(formData.email, formData.password);
+      } catch (err) {
+      }
+      onLoginSuccess?.(formData.email);
+    } catch (err: any) {
+      alert(err?.message || String(err));
+    } finally {
       setIsLoading(false);
-      // TODO: Implement actual signup logic
-      onLoginSuccess();
-    }, 1000);
+    }
   };
 
   if (!isOpen) return null;
