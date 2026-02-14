@@ -23,6 +23,13 @@ export default function ProfilePage() {
     { icon: DollarSign, label: 'Earnings', value: '$3,450' },
   ];
 
+  // Display values directly from `user`
+  const displayEmail = user?.email ?? '';
+  const displayFirstName = user?.first_name ?? '';
+  const displayLastName = user?.last_name ?? '';
+  const displayName = `${displayFirstName} ${displayLastName}`.trim();
+
+
   return (
     <div className="min-h-screen pb-24">
       {!isLoggedIn ? (
@@ -58,8 +65,8 @@ export default function ProfilePage() {
                     <User className="w-12 h-12 text-muted-foreground" />
                   </div>
                   <div className="pb-6">
-                    <h1 className="text-4xl font-bold text-white">Alex Driver</h1>
-                    <p className="text-lg text-muted-foreground">driver_alex_123</p>
+                    <h1 className="text-4xl font-bold text-white">{displayName || 'Alex Driver'}</h1>
+                    <p className="text-lg text-muted-foreground">{displayEmail || 'driver_alex_123'}</p>
                   </div>
                 </div>
               </div>
@@ -99,6 +106,7 @@ export default function ProfilePage() {
               <h2 className="text-lg font-semibold text-foreground mb-3">Vehicle Settings</h2>
               <VehicleSelector selected={vehicle} onChange={setVehicle} />
             </div>
+
             {/* Logout */}
             <button 
               onClick={logout}
@@ -110,18 +118,22 @@ export default function ProfilePage() {
           </main>
         </>
       )}
-      {/* Auth Modals for profile page */}
-      <LoginOverlay
-        isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
-        onSwitchToSignup={() => {
-          setShowLogin(false);
-          setShowSignup(true);
-        }}
-        onLoginSuccess={() => {
-          setShowLogin(false);
-        }}
-      />
+
+      {/* Auth Modals */}
+    <LoginOverlay
+      isOpen={showLogin}
+      onClose={() => setShowLogin(false)}
+      onSwitchToSignup={() => {
+        setShowLogin(false);
+        setShowSignup(true);
+      }}
+      onLoginSuccess={() => {
+        // no-op or just close modal
+        setShowLogin(false);
+      }}
+    />
+
+
       <SignupOverlay
         isOpen={showSignup}
         onClose={() => setShowSignup(false)}
