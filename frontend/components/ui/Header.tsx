@@ -20,7 +20,7 @@ export default function Header() {
   const locationRef = useRef<HTMLDivElement>(null);
   const languageRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn, user, loginMock, logout } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
   const { itemCount, isCartOpen, openCart, closeCart } = useCart();
 
   // Close dropdowns when clicking outside
@@ -80,7 +80,6 @@ export default function Header() {
   };
 
   const handleLoginSuccess = () => {
-    loginMock();
     handleCloseOverlays();
     setShowProfileDropdown(true);
   };
