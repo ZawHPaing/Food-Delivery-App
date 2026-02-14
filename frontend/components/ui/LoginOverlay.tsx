@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from '@/app/_providers/AuthProvider';
 
 interface LoginOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToSignup: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess: (data: { token: string; email: string }) => void; // <-- object now
 }
 
+
 export default function LoginOverlay({ isOpen, onClose, onSwitchToSignup, onLoginSuccess }: LoginOverlayProps) {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -17,14 +20,14 @@ export default function LoginOverlay({ isOpen, onClose, onSwitchToSignup, onLogi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Login attempt:", { email, password });
+    try {
+      await login(email, password);
+      onLoginSuccess({ token: '', email });
+    } catch (err: any) {
+      alert(err?.message || 'Login failed');
+    } finally {
       setIsLoading(false);
-      // TODO: Implement actual login logic
-      onLoginSuccess();
-    }, 1000);
+    }
   };
 
   if (!isOpen) return null;
