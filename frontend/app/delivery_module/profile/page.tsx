@@ -5,6 +5,7 @@ import { StatusToggle } from '@/components/delivery/StatusToggle';
 import { ShiftTimer } from '@/components/delivery/ShiftTimer';
 import { VehicleSelector } from '@/components/delivery/VehicleSelector';
 import { User, Star, TrendingUp, DollarSign, Package, LogOut } from 'lucide-react';
+import { DriverStatus } from '@/types/delivery';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import LoginOverlay from '@/components/ui/LoginOverlay';
 import SignupOverlay from '@/components/ui/SignupOverlay';
@@ -16,11 +17,70 @@ export default function ProfilePage() {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
 
+  // Safely read deliveries from user
+  const deliveries = (user as any)?.deliveries as Array<{ delivery_fee_cents?: number }> ?? [];
+  const deliveriesCount = deliveries.length;
+  const earningsCents = deliveries.reduce(
+    (sum: number, d: { delivery_fee_cents?: number }) => sum + (d.delivery_fee_cents ?? 0),
+    0
+  );
+  const earningsDisplay = `${earningsCents.toLocaleString()} MMK`;
+  // Map backend status strings ('available'|'unavailable'|'busy') to DriverStatus
+  const backendToDriverStatus = (s: string | undefined): DriverStatus =>
+    s === 'available' ? 'online' : s === 'busy' ? 'busy' : 'offline';
+  const driverStatusToBackend = (s: DriverStatus) =>
+    s === 'online' ? 'available' : s === 'busy' ? 'busy' : 'unavailable';
+
+  const initialStatus = backendToDriverStatus((user as any)?.rider?.status);
+  const [availability, setAvailability] = useState<DriverStatus>(initialStatus ?? 'offline');
+
+  // Toggle status and persist to backend `delivery/profile` endpoint
+  async function handleToggleStatus() {
+    const nextDriverStatus: DriverStatus = availability === 'online' ? 'offline' : 'online';
+    const nextStatusBackend = driverStatusToBackend(nextDriverStatus);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+    try {
+      const riderId = (user as any)?.rider?.id;
+      if (!riderId) {
+        console.error('No rider id available to update status');
+        return;
+      }
+
+      const url = `http://localhost:8000/delivery/status?rider_id=${encodeURIComponent(riderId)}&status=${encodeURIComponent(nextStatusBackend)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => '');
+        const msg = `Failed to update status: ${bodyText || res.statusText || `status ${res.status}`}`;
+        console.error(msg);
+        return;
+      }
+
+      const data = await res.json();
+      // backend returns { success: true, status: "available" }
+      if (data?.success && data?.status) {
+        setAvailability(backendToDriverStatus(data.status));
+        try {
+          toggleOnline();
+        } catch (err) {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error(`Error updating status: ${String(err)}`);
+    }
+  }
   const stats = [
-    { icon: Package, label: 'Deliveries', value: '1,247' },
+    { icon: Package, label: 'Deliveries', value: String(deliveriesCount) },
     { icon: Star, label: 'Rating', value: '4.9' },
     { icon: TrendingUp, label: 'Acceptance', value: '95%' },
-    { icon: DollarSign, label: 'Earnings', value: '$3,450' },
+    { icon: DollarSign, label: 'Earnings', value: earningsDisplay },
   ];
 
   // Display values directly from `user`
@@ -28,7 +88,6 @@ export default function ProfilePage() {
   const displayFirstName = user?.first_name ?? '';
   const displayLastName = user?.last_name ?? '';
   const displayName = `${displayFirstName} ${displayLastName}`.trim();
-
 
   return (
     <div className="min-h-screen pb-24">
@@ -93,7 +152,7 @@ export default function ProfilePage() {
               <h2 className="text-lg font-semibold text-foreground mb-3">Status Management</h2>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <StatusToggle status={status} onToggle={toggleOnline} />
+                  <StatusToggle status={availability} onToggle={handleToggleStatus} />
                 </div>
                 <div className="flex-1">
                   <ShiftTimer startTime={shiftStartTime} />
@@ -120,20 +179,15 @@ export default function ProfilePage() {
       )}
 
       {/* Auth Modals */}
-    <LoginOverlay
-      isOpen={showLogin}
-      onClose={() => setShowLogin(false)}
-      onSwitchToSignup={() => {
-        setShowLogin(false);
-        setShowSignup(true);
-      }}
-      onLoginSuccess={() => {
-        // no-op or just close modal
-        setShowLogin(false);
-      }}
-    />
-
-
+      <LoginOverlay
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSwitchToSignup={() => {
+          setShowLogin(false);
+          setShowSignup(true);
+        }}
+        onLoginSuccess={() => setShowLogin(false)}
+      />
       <SignupOverlay
         isOpen={showSignup}
         onClose={() => setShowSignup(false)}
