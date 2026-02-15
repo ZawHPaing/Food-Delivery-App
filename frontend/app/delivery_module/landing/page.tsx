@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronRight, CheckCircle2, MapPin, Smartphone, Bike, User, DollarSign, Clock, Gift } from "lucide-react";
 import LoginOverlay from "@/components/ui/LoginOverlay";
 import SignupOverlay from "@/components/ui/SignupOverlay";
@@ -20,8 +21,11 @@ export default function DeliveryLandingPage() {
   const [agreed, setAgreed] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
-  const { isLoggedIn, loginMock, logout } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
+  const { isLoggedIn, login, logout } = useAuth();
+  const router = useRouter();
   const showExtendedForm = city !== "" && vehicle !== "";
 
   return (
@@ -40,16 +44,16 @@ export default function DeliveryLandingPage() {
               <>
                 <button
                   onClick={() => setShowLogin(true)}
-                  className="text-sm font-semibold text-gray-600 hover:text-[#e4002b] transition-colors"
+                  className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white px-5 py-2 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-orange-200 active:scale-95 transition-all"
                 >
                   Log in
                 </button>
-                <button
+                {/* <button
                   onClick={() => setShowSignup(true)}
                   className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white px-5 py-2 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-orange-200 active:scale-95 transition-all"
                 >
                   Sign up
-                </button>
+                </button> */}
               </>
             ) : (
               <button
@@ -144,6 +148,11 @@ export default function DeliveryLandingPage() {
                       setMessage(data?.error || JSON.stringify(data));
                     } else {
                       setMessage('Signup successful!');
+                      const token = data?.access_token || data?.accessToken || data?.token;
+                      try { if (token) localStorage.setItem('access_token', token); } catch (e) {}
+                      try { await login(email, password); } catch (e) {}
+                      setShowSignup(false);
+                      try { router.push('/delivery_module/profile'); } catch (e) {}
                     }
                   } catch (err: any) {
                     setMessage(err.message || String(err));
@@ -482,18 +491,19 @@ export default function DeliveryLandingPage() {
         </div>
       </footer>
       {/* Auth Modals */}
-      <LoginOverlay
-        isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
-        onSwitchToSignup={() => {
-          setShowLogin(false);
-          setShowSignup(true);
-        }}
-        onLoginSuccess={() => {
-          loginMock();
-          setShowLogin(false);
-        }}
-      />
+<LoginOverlay
+  isOpen={showLogin}
+  onClose={() => setShowLogin(false)}
+  onSwitchToSignup={() => {
+    setShowLogin(false);
+    setShowSignup(true);
+  }}
+onLoginSuccess={(data: { token: string; email: string }) => {
+  setShowLogin(false);
+  router.push('/delivery_module/profile');
+}}
+  />
+
       <SignupOverlay
         isOpen={showSignup}
         onClose={() => setShowSignup(false)}
