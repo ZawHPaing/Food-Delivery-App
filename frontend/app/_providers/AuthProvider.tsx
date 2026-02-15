@@ -2,6 +2,18 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
+// Add this type at the top
+export type Rider = {
+  id: number;
+  vehicle_type: string;
+  license_plate: string;
+  status: string; // available, unavailable, etc.
+  city: string;
+  current_latitude: number | null;
+  current_longitude: number | null;
+  last_location_update: string | null;
+};
+
 export type User = {
   id: string;
   username: string;
@@ -10,7 +22,10 @@ export type User = {
   last_name?: string;
   phone?: string;
   address?: string;
+  rider?: Rider;
+  deliveries?: Array<{ delivery_fee_cents?: number }>; 
 };
+
 
 
 type AuthState = {
@@ -70,31 +85,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) throw new Error("Invalid credentials");
 
       const data = await response.json();
-      localStorage.setItem("access_token", data.access_token);
+      
+      localStorage.setItem(TOKEN_KEY, data.access_token);
 
-      // Store email initially
-      const next: AuthState = { isLoggedIn: true, user: { ...data, fullName: '', email: data.email, id: '', username: '' } };
+      // Store minimal user first
+      const next: AuthState = {
+        isLoggedIn: true,
+        user: { ...data, fullName: '', email: data.email, id: '', username: '' },
+      };
       setState(next);
       persistState(next);
-
-      // Fetch full profile after login
-      const token = data.access_token;
+      
       try {
         const res = await fetch(`http://localhost:8000/delivery/profile?email=${encodeURIComponent(data.email)}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${data.access_token}` },
         });
         if (!res.ok) return;
+
         const profileData = await res.json();
+        console.log("profileData from backend:", profileData);
+
+        // Merge the fetched profile into `user`
         setState(prev => {
-        if (!prev.user) return prev;
-        const next: AuthState = {
-          ...prev,
-          user: { ...prev.user, ...profileData, username: prev.user.username, id: prev.user.id },
-        };
-        persistState(next);
-        return next;
-      });
-      // this merges the fetched profile into `user`
+          if (!prev.user) return prev;
+          const merged: AuthState = {
+            ...prev,
+            user: { ...prev.user, ...profileData, id: prev.user.id, username: prev.user.username },
+          };
+          persistState(merged);
+          return merged;
+        });
       } catch (err) {
         console.error("Failed to fetch profile:", err);
       }
