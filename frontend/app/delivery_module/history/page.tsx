@@ -1,50 +1,43 @@
 "use client";
 
-import { Package, MapPin, Clock, Check } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Package, MapPin, Clock, Check } from "lucide-react";
 
-const mockHistory = [
-  {
-    id: '1',
-    shopName: 'Burger Palace',
-    customerName: 'John Smith',
-    items: 3,
-    earnings: 8.50,
-    completedAt: new Date(Date.now() - 3600000),
-    distance: 3.2,
-  },
-  {
-    id: '2',
-    shopName: 'Pizza Heaven',
-    customerName: 'Sarah Johnson',
-    items: 2,
-    earnings: 6.25,
-    completedAt: new Date(Date.now() - 7200000),
-    distance: 2.1,
-  },
-  {
-    id: '3',
-    shopName: 'Sushi Express',
-    customerName: 'Mike Chen',
-    items: 5,
-    earnings: 12.00,
-    completedAt: new Date(Date.now() - 10800000),
-    distance: 4.5,
-  },
-  {
-    id: '4',
-    shopName: 'Taco Town',
-    customerName: 'Emily Davis',
-    items: 4,
-    earnings: 7.75,
-    completedAt: new Date(Date.now() - 86400000),
-    distance: 2.8,
-  },
-];
+interface Delivery {
+  id: number;
+  restaurant_name: string;
+  customer_name: string;
+  earnings_cents: number;
+  delivered_at: string;
+  distance_km: number;
+}
 
 export default function HistoryPage() {
-  const todayEarnings = mockHistory
-    .filter((h) => h.completedAt.getTime() > Date.now() - 86400000)
-    .reduce((sum, h) => sum + h.earnings, 0);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const res = await fetch(`http://localhost:8000/delivery/history?rider_id=8`);
+        const data = await res.json();
+        setDeliveries(data.deliveries);
+      } catch (err) {
+        console.error("Failed to fetch delivery history", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchHistory();
+  }, []);
+
+  const todayDeliveries = deliveries.filter(
+    (d) => new Date(d.delivered_at).getTime() > Date.now() - 86400000
+  );
+  const todayEarnings = todayDeliveries.reduce((sum, d) => sum + d.earnings_cents / 100, 0);
+  const todayDistance = todayDeliveries.reduce((sum, d) => sum + d.distance_km, 0);
+
+  if (loading) return <p className="text-center mt-10">Loading...</p>;
 
   return (
     <div className="min-h-screen pb-24">
@@ -60,31 +53,22 @@ export default function HistoryPage() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="p-6 rounded-2xl gradient-primary shadow-glow mb-6">
           <p className="text-primary-foreground/80 text-sm mb-1">Today's Earnings</p>
-          <p className="text-4xl font-bold text-primary-foreground">
-            ${todayEarnings.toFixed(2)}
-          </p>
+          <p className="text-4xl font-bold text-primary-foreground">{todayDeliveries.reduce((sum, d) => sum + d.earnings_cents, 0)} MMK</p>
           <div className="flex items-center gap-4 mt-4">
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4 text-primary-foreground/80" />
-              <span className="text-sm text-primary-foreground/80">
-                {mockHistory.filter((h) => h.completedAt.getTime() > Date.now() - 86400000).length} deliveries
-              </span>
+              <span className="text-sm text-primary-foreground/80">{todayDeliveries.length} deliveries</span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-primary-foreground/80" />
-              <span className="text-sm text-primary-foreground/80">
-                {mockHistory
-                  .filter((h) => h.completedAt.getTime() > Date.now() - 86400000)
-                  .reduce((sum, h) => sum + h.distance, 0)
-                  .toFixed(1)} km
-              </span>
+              <span className="text-sm text-primary-foreground/80">{todayDistance.toFixed(1)} km</span>
             </div>
           </div>
         </div>
 
         {/* History list */}
         <div className="space-y-3">
-          {mockHistory.map((order) => (
+          {deliveries.map((order) => (
             <div
               key={order.id}
               className="p-4 rounded-xl bg-card shadow-card border border-border animate-fade-in"
@@ -95,28 +79,21 @@ export default function HistoryPage() {
                     <Check className="w-5 h-5 text-success" />
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground">{order.shopName}</p>
-                    <p className="text-sm text-muted-foreground">to {order.customerName}</p>
+                    <p className="font-semibold text-foreground">{order.restaurant_name}</p>
+                    <p className="text-sm text-muted-foreground">to {order.customer_name}</p>
                   </div>
                 </div>
-                <p className="text-lg font-bold text-success">+${order.earnings.toFixed(2)}</p>
+                <p className="text-lg font-bold text-success">+{order.earnings_cents} MMK</p>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Package className="w-4 h-4" />
-                  <span>{order.items} items</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  <span>{order.distance} km</span>
+                  <span>{order.distance_km.toFixed(1)} km</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
                   <span>
-                    {order.completedAt.toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {new Date(order.delivered_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
               </div>
