@@ -8,6 +8,7 @@ import { MapPlaceholder } from '@/components/delivery/MapPlaceholder';
 import { Package, Bike, Map as MapIcon, ChevronUp, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { DriverStatus } from '@/types/delivery';
 import { motion, AnimatePresence } from 'framer-motion';
 import LoginOverlay from '@/components/ui/LoginOverlay';
 import SignupOverlay from '@/components/ui/SignupOverlay';
@@ -31,7 +32,58 @@ export default function Dashboard() {
   const [showMap, setShowMap] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
-  const { isLoggedIn, loginMock, logout } = useAuth();
+  const { isLoggedIn, logout, user } = useAuth();
+
+  // Map backend status strings ('available'|'unavailable'|'busy') to DriverStatus
+  const backendToDriverStatus = (s: string | undefined): DriverStatus =>
+    s === 'available' ? 'online' : s === 'busy' ? 'busy' : 'offline';
+  const driverStatusToBackend = (s: DriverStatus) =>
+    s === 'online' ? 'available' : s === 'busy' ? 'busy' : 'unavailable';
+
+  const initialStatus = backendToDriverStatus((user as any)?.rider?.status);
+  const [availability, setAvailability] = useState<DriverStatus>(initialStatus ?? 'offline');
+
+  // Toggle status and persist to backend `delivery/status` endpoint
+  async function handleToggleStatus() {
+    const nextDriverStatus: DriverStatus = availability === 'online' ? 'offline' : 'online';
+    const nextStatusBackend = driverStatusToBackend(nextDriverStatus);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+    try {
+      const riderId = (user as any)?.rider?.id;
+      if (!riderId) {
+        console.error('No rider id available to update status');
+        return;
+      }
+
+      const url = `http://localhost:8000/delivery/status?rider_id=${encodeURIComponent(riderId)}&status=${encodeURIComponent(nextStatusBackend)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => '');
+        const msg = `Failed to update status: ${bodyText || res.statusText || `status ${res.status}`}`;
+        console.error(msg);
+        return;
+      }
+
+      const data = await res.json();
+      if (data?.success && data?.status) {
+        setAvailability(backendToDriverStatus(data.status));
+        try {
+          toggleOnline();
+        } catch (err) {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error(`Error updating status: ${String(err)}`);
+    }
+  }
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-slate-50">
@@ -74,7 +126,7 @@ export default function Dashboard() {
       <main className="flex-1 overflow-hidden flex flex-col max-w-2xl mx-auto w-full relative">
         <div className="p-4 space-y-4">
           {/* Status Toggle */}
-          <StatusToggle status={status} onToggle={toggleOnline} />
+          <StatusToggle status={availability} onToggle={handleToggleStatus} />
 
           {/* Map View */}
           <div className="animate-enter" style={{ animationDelay: '0.1s' }}>
@@ -194,7 +246,6 @@ export default function Dashboard() {
           setShowSignup(true);
         }}
         onLoginSuccess={() => {
-          loginMock();
           setShowLogin(false);
         }}
       />
