@@ -1,10 +1,11 @@
-import { Bike, Car, Zap } from 'lucide-react';
+import { Bike, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VehicleType } from '@/types/delivery';
 
 interface VehicleSelectorProps {
   selected: VehicleType;
   onChange: (vehicle: VehicleType) => void;
+  allowedTypes?: VehicleType[];
 }
 
 const vehicles = [
@@ -12,12 +13,17 @@ const vehicles = [
   { type: 'car' as VehicleType, icon: Car, label: 'Car/Bus', speed: 'Large orders' },
 ];
 
-export function VehicleSelector({ selected, onChange }: VehicleSelectorProps) {
+export function VehicleSelector({ selected, onChange, allowedTypes }: VehicleSelectorProps) {
+  const visibleVehicles = allowedTypes
+    ? vehicles.filter((v) => allowedTypes.includes(v.type))
+    : vehicles;
+  const isSingle = visibleVehicles.length === 1;
+
   return (
     <div className="p-4 rounded-xl bg-card shadow-card">
 
-      <div className="grid grid-cols-2 gap-2">
-        {vehicles.map(({ type, icon: Icon, label, speed }) => (
+      <div className={cn('grid gap-2', isSingle ? 'grid-cols-1' : 'grid-cols-2')}>
+        {visibleVehicles.map(({ type, icon: Icon, label, speed }) => (
           <button
             key={type}
             onClick={() => onChange(type)}

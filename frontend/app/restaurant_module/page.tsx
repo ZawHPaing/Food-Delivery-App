@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, UtensilsCrossed, Truck, DollarSign, TrendingUp, Users, ArrowUpRight, ArrowRight } from 'lucide-react';
+import { ClipboardList, UtensilsCrossed, Truck, DollarSign, TrendingUp, Users, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useRestaurant } from '@/context/RestaurantContext';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ export default function Index() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              Significant increase from yesterday's earnings of $1,204.00
+              Significant increase from yesterday&apos;s earnings of $1,204.00
             </p>
           </CardContent>
         </Card>
@@ -106,7 +106,7 @@ export default function Index() {
       </div>
 
       {/* Secondary Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Menu Stats */}
         <Card className="glass-card shadow-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -129,17 +129,6 @@ export default function Index() {
             <div className="text-2xl font-bold">{availableRiders}</div>
             <p className="text-xs text-muted-foreground">Ready for dispatch</p>
           </CardContent>
-        </Card>
-
-        {/* Quick Action - Add Item (Mock) */}
-        <Card className="glass-card border-dashed border-2 bg-transparent hover:bg-secondary/30 transition-colors cursor-pointer flex items-center justify-center group">
-          <div className="text-center p-6">
-            <div className="w-12 h-12 bg-[#e4002b]/10 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform text-[#e4002b]">
-              <ArrowUpRight className="w-6 h-6" />
-            </div>
-            <h3 className="font-semibold text-foreground">View Reports</h3>
-            <p className="text-xs text-muted-foreground">Analyze performance</p>
-          </div>
         </Card>
       </div>
 

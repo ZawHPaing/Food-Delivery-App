@@ -6,11 +6,11 @@ import {
   Volume2,
   Shield,
   HelpCircle,
-  LogOut,
   ChevronRight,
   Moon,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { DeliveryNavbar } from '@/components/delivery/DeliveryNavbar';
 
 const settingGroups = [
   {
@@ -39,13 +39,7 @@ const settingGroups = [
 export default function SettingsPage() {
   return (
     <div className="min-h-screen pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-40 glass border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage your preferences</p>
-        </div>
-      </header>
+      <DeliveryNavbar />
 
       {/* Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -79,13 +73,6 @@ export default function SettingsPage() {
           </div>
         ))}
 
-        {/* Logout */}
-        <button className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
-          <LogOut className="w-5 h-5" />
-          <span className="font-semibold">Log Out</span>
-        </button>
-
-        {/* Version */}
         <p className="text-center text-sm text-muted-foreground">
           DeliverPro Driver v1.0.0
         </p>

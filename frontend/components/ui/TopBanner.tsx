@@ -31,7 +31,7 @@ export default function TopBanner() {
         </div>
         <div className="flex items-center space-x-3">
           <Link 
-            href="/restaurant_module"
+            href="/restaurant_portal"
             className="border-2 border-white px-4 py-1.5 rounded-lg font-semibold text-sm md:text-base hover:bg-white/10 transition-colors"
           >
             RESTAURANT PORTAL

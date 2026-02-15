@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight, CheckCircle2, MapPin, Smartphone, Bike, User, DollarSign, Clock, Gift } from "lucide-react";
 import LoginOverlay from "@/components/ui/LoginOverlay";
 import SignupOverlay from "@/components/ui/SignupOverlay";
@@ -26,7 +26,14 @@ export default function DeliveryLandingPage() {
 
   const { isLoggedIn, login, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const showExtendedForm = city !== "" && vehicle !== "";
+
+  useEffect(() => {
+    if (searchParams.get("login") === "1") {
+      setShowLogin(true);
+    }
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
@@ -57,7 +64,14 @@ export default function DeliveryLandingPage() {
               </>
             ) : (
               <button
-                onClick={logout}
+                onClick={async () => {
+                  try {
+                    await logout();
+                  } catch {
+                  } finally {
+                    setShowLogin(true);
+                  }
+                }}
                 className="text-sm font-semibold text-gray-600 hover:text-[#e4002b] transition-colors"
               >
                 Log out

@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import LoginOverlay from "./LoginOverlay";
 import SignupOverlay from "./SignupOverlay";
 import CartSidebar from "./CartSidebar";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { useCart } from "@/app/_providers/CartProvider";
+import { useFavorites } from "@/app/_providers/FavoritesProvider";
 
 export default function Header() {
   const [selectedLocation, setSelectedLocation] = useState("Yangon");
@@ -16,12 +18,18 @@ export default function Header() {
   const [showLoginOverlay, setShowLoginOverlay] = useState(false);
   const [showSignupOverlay, setShowSignupOverlay] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [favorites, setFavorites] = useState<string[]>([]);
   const locationRef = useRef<HTMLDivElement>(null);
   const languageRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn, user, logout } = useAuth();
   const { itemCount, isCartOpen, openCart, closeCart } = useCart();
+  const {
+    items: favoriteItems,
+    isFavoritesOpen,
+    openFavorites,
+    closeFavorites,
+    removeFavorite,
+  } = useFavorites();
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -85,12 +93,7 @@ export default function Header() {
   };
 
   const handleFavoriteClick = () => {
-    // Toggle favorite state for demo purposes
-    setFavorites(prev => 
-      prev.includes("demo-item") 
-        ? prev.filter(item => item !== "demo-item")
-        : [...prev, "demo-item"]
-    );
+    openFavorites();
   };
 
   const handleCartClick = () => {
@@ -385,18 +388,19 @@ export default function Header() {
               </span>
             </button>
 
-            {/* Favorite Button - Only show when logged in */}
             {isLoggedIn && (
-              <button 
+              <button
                 onClick={handleFavoriteClick}
                 className={`relative p-2 transition-colors ${
-                  favorites.includes("demo-item") 
-                    ? "text-[#e4002b]" 
+                  favoriteItems.length > 0
+                    ? "text-[#e4002b]"
                     : "text-gray-700 hover:text-[#e4002b]"
                 }`}
               >
                 <svg
-                  className={`w-6 h-6 ${favorites.includes("demo-item") ? "fill-current" : ""}`}
+                  className={`w-6 h-6 ${
+                    favoriteItems.length > 0 ? "fill-current" : ""
+                  }`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -409,7 +413,7 @@ export default function Header() {
                   />
                 </svg>
                 <span className="absolute top-0 right-0 h-5 w-5 bg-[#e4002b] text-white text-xs rounded-full flex items-center justify-center">
-                  {favorites.length}
+                  {favoriteItems.length}
                 </span>
               </button>
             )}
@@ -430,10 +434,143 @@ export default function Header() {
         onSwitchToLogin={handleSwitchToLogin}
         onLoginSuccess={handleLoginSuccess}
       />
-      <CartSidebar 
-        isOpen={isCartOpen}
-        onClose={closeCart}
+      <CartSidebar isOpen={isCartOpen} onClose={closeCart} />
+
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+          isFavoritesOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={closeFavorites}
       />
+
+      <div
+        className={`fixed right-0 top-0 h-full w-full max-w-md bg-white z-50 shadow-2xl transition-transform duration-300 flex flex-col ${
+          isFavoritesOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between p-6 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-[#0F172A]">Your Favorites</h2>
+            <p className="text-gray-500 font-medium">
+              Saved restaurants and dishes for quick access
+            </p>
+          </div>
+          <button
+            onClick={closeFavorites}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <svg
+              className="w-6 h-6 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 flex flex-col min-h-0">
+          {favoriteItems.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8">
+              <div className="w-24 h-24 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                <svg
+                  className="w-12 h-12 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No favorites yet
+              </h3>
+              <p className="text-gray-500 text-center">
+                Tap the heart icon on dishes and restaurants to save them here.
+              </p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {favoriteItems.map((favorite) => (
+                <div
+                  key={favorite.menuItem.id}
+                  className="flex items-center justify-between bg-gray-50/50 rounded-2xl p-4 border border-gray-100 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-gray-100">
+                      {favorite.menuItem.image ? (
+                        <Image
+                          src={favorite.menuItem.image}
+                          alt={favorite.menuItem.name}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-[#ffe5e9]">
+                          <svg
+                            className="w-5 h-5 text-[#e4002b]"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-white flex items-center justify-center shadow-sm">
+                        <svg
+                          className="w-3.5 h-3.5 text-[#e4002b]"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {favorite.menuItem.name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {favorite.restaurant.name}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeFavorite(favorite.menuItem.id)}
+                    className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </header>
   );
 }

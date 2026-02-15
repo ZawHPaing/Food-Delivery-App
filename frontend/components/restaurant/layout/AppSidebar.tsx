@@ -1,4 +1,4 @@
-import { ClipboardList, UtensilsCrossed, LayoutDashboard, Settings, LogOut, PanelLeft } from 'lucide-react';
+import { ClipboardList, UtensilsCrossed, LayoutDashboard, LogOut, PanelLeft } from 'lucide-react';
 import { NavLink } from '@/components/restaurant/NavLink';
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +16,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 const navigationItems = [
   { title: 'Dashboard', url: '/restaurant_module', icon: LayoutDashboard },
@@ -26,6 +27,7 @@ const navigationItems = [
 export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const router = useRouter();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50 bg-card/50 backdrop-blur-xl z-30">
@@ -88,13 +90,10 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 border-t border-border/50">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="h-12 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-              <Settings className="h-5 w-5" />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton className="h-12 rounded-xl text-[#e4002b] hover:bg-[#e4002b]/10">
+            <SidebarMenuButton
+              className="h-12 rounded-xl text-[#e4002b] hover:bg-[#e4002b]/10"
+              onClick={() => router.push('/restaurant_portal')}
+            >
               <LogOut className="h-5 w-5" />
               <span>Log out</span>
             </SidebarMenuButton>

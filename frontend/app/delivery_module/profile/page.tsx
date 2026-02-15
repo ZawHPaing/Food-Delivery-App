@@ -2,18 +2,18 @@
 
 import { useDeliveryState } from '@/hooks/useDeliveryState';
 import { StatusToggle } from '@/components/delivery/StatusToggle';
-import { ShiftTimer } from '@/components/delivery/ShiftTimer';
 import { VehicleSelector } from '@/components/delivery/VehicleSelector';
-import { User, Star, TrendingUp, DollarSign, Package, LogOut } from 'lucide-react';
-import { DriverStatus } from '@/types/delivery';
+import { User, Star, DollarSign, Package } from 'lucide-react';
+import { DriverStatus, VehicleType } from '@/types/delivery';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import LoginOverlay from '@/components/ui/LoginOverlay';
 import SignupOverlay from '@/components/ui/SignupOverlay';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { DeliveryNavbar } from '@/components/delivery/DeliveryNavbar';
 
 export default function ProfilePage() {
-  const { status, vehicle, shiftStartTime, toggleOnline, setVehicle } = useDeliveryState();
-  const { isLoggedIn, user, logout } = useAuth();
+  const { vehicle, toggleOnline, setVehicle } = useDeliveryState();
+  const { isLoggedIn, user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
 
@@ -79,9 +79,24 @@ export default function ProfilePage() {
   const stats = [
     { icon: Package, label: 'Deliveries', value: String(deliveriesCount) },
     { icon: Star, label: 'Rating', value: '4.9' },
-    { icon: TrendingUp, label: 'Acceptance', value: '95%' },
     { icon: DollarSign, label: 'Earnings', value: earningsDisplay },
   ];
+
+  // Map registered vehicle from backend rider profile to UI vehicle type
+  const registeredVehicle: VehicleType | null = useMemo(() => {
+    const raw = user?.rider?.vehicle_type?.toLowerCase();
+    if (!raw) return null;
+    if (raw === 'car' || raw === 'van' || raw === 'truck' || raw === 'bus') return 'car';
+    if (raw === 'bike' || raw === 'bicycle' || raw === 'motorbike' || raw === 'scooter') return 'bike';
+    return null;
+  }, [user?.rider?.vehicle_type]);
+
+  const displayVehicle: VehicleType = registeredVehicle ?? vehicle;
+  const allowedVehicleTypes: VehicleType[] = [displayVehicle];
+
+  const handleVehicleChange = () => {
+    // Vehicle type is fixed; no switching from this screen
+  };
 
   // Display values directly from `user`
   const displayEmail = user?.email ?? '';
@@ -91,6 +106,10 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen pb-24">
+      <DeliveryNavbar
+        onLoginClick={() => setShowLogin(true)}
+        onSignupClick={() => setShowSignup(true)}
+      />
       {!isLoggedIn ? (
         <main className="max-w-2xl mx-auto px-4 py-16 text-center space-y-6">
           <h1 className="text-3xl font-bold">You are logged out</h1>
@@ -116,7 +135,7 @@ export default function ProfilePage() {
         <>
           {/* Header */}
           <header className="relative">
-            <div className="h-32 gradient-primary" />
+            <div className="h-24 gradient-primary" />
             <div className="max-w-2xl mx-auto px-4">
               <div className="relative -mt-16">
                 <div className="flex items-end gap-4">
@@ -135,7 +154,7 @@ export default function ProfilePage() {
           {/* Content */}
           <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {stats.map(({ icon: Icon, label, value }) => (
                 <div key={label} className="p-4 rounded-xl bg-card shadow-card text-center">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-2">
@@ -150,30 +169,19 @@ export default function ProfilePage() {
             {/* Status section */}
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-3">Status Management</h2>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <StatusToggle status={availability} onToggle={handleToggleStatus} />
-                </div>
-                <div className="flex-1">
-                  <ShiftTimer startTime={shiftStartTime} />
-                </div>
-              </div>
+              <StatusToggle status={availability} onToggle={handleToggleStatus} />
             </div>
 
             {/* Vehicle settings */}
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-3">Vehicle Settings</h2>
-              <VehicleSelector selected={vehicle} onChange={setVehicle} />
+              <VehicleSelector
+                selected={displayVehicle}
+                onChange={handleVehicleChange}
+                allowedTypes={allowedVehicleTypes}
+              />
             </div>
 
-            {/* Logout */}
-            <button 
-              onClick={logout}
-              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="font-semibold">Log Out</span>
-            </button>
           </main>
         </>
       )}

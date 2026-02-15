@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { Heart } from "lucide-react";
 import type { MenuItemWithCategory, Restaurant } from "@/types";
 import { formatPrice } from "@/types";
 import { useCart } from "@/app/_providers/CartProvider";
+import { useFavorites } from "@/app/_providers/FavoritesProvider";
 
 interface MenuItemCardProps {
   item: MenuItemWithCategory;
@@ -14,10 +16,13 @@ interface MenuItemCardProps {
 
 export default function MenuItemCard({ item, restaurant, onItemClick }: MenuItemCardProps) {
   const { addItem, getItemQuantity, updateQuantity } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
   const [isAdding, setIsAdding] = useState(false);
-  
+  const [isFavAnimating, setIsFavAnimating] = useState(false);
+
   const quantity = getItemQuantity(item.id);
   const isInCart = quantity > 0;
+  const isFav = isFavorite(item.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -36,6 +41,15 @@ export default function MenuItemCard({ item, restaurant, onItemClick }: MenuItem
     updateQuantity(item.id, quantity - 1);
   };
 
+  const handleFavoriteToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isFav) {
+      setIsFavAnimating(true);
+      setTimeout(() => setIsFavAnimating(false), 300);
+    }
+    toggleFavorite(item, restaurant);
+  };
+
   return (
     <div
       onClick={() => onItemClick?.(item)}
@@ -44,7 +58,6 @@ export default function MenuItemCard({ item, restaurant, onItemClick }: MenuItem
       }`}
     >
       <div className="flex">
-        {/* Content */}
         <div className="flex-1 p-4">
           <div className="flex items-start gap-2 mb-1">
             <h3 className="font-semibold text-gray-900 group-hover:text-[#e4002b] transition-colors line-clamp-1">
@@ -56,12 +69,11 @@ export default function MenuItemCard({ item, restaurant, onItemClick }: MenuItem
               </span>
             )}
           </div>
-          
+
           <p className="text-sm text-gray-500 line-clamp-2 mb-3 min-h-[40px]">
             {item.description}
           </p>
-          
-          {/* Tags */}
+
           <div className="flex flex-wrap gap-1.5 mb-3">
             {item.isSpicy && (
               <span className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded-full">
@@ -79,13 +91,12 @@ export default function MenuItemCard({ item, restaurant, onItemClick }: MenuItem
               </span>
             )}
           </div>
-          
-          {/* Price and Add to Cart */}
+
           <div className="flex items-center justify-between">
             <span className="text-lg font-bold text-[#e4002b]">
               {formatPrice(item.price_cents)}
             </span>
-            
+
             {item.is_available ? (
               isInCart ? (
                 <div className="flex items-center gap-2">
@@ -136,8 +147,7 @@ export default function MenuItemCard({ item, restaurant, onItemClick }: MenuItem
             )}
           </div>
         </div>
-        
-        {/* Image */}
+
         {item.image && (
           <div className="relative w-32 h-32 m-3 rounded-lg overflow-hidden shrink-0">
             <Image
@@ -150,6 +160,28 @@ export default function MenuItemCard({ item, restaurant, onItemClick }: MenuItem
             {item.isPopular && (
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
             )}
+
+            <button
+              onClick={handleFavoriteToggle}
+              className="absolute top-2 right-2 z-10"
+            >
+              <div
+                className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 ${
+                  isFav
+                    ? "bg-white text-[#e4002b] shadow-lg scale-110"
+                    : "bg-black/60 text-white hover:scale-105"
+                }`}
+              >
+                {isFavAnimating && (
+                  <span className="absolute inset-0 rounded-full border-2 border-[#e4002b]/60 animate-ping" />
+                )}
+                <Heart
+                  className={`h-4 w-4 ${
+                    isFav ? "fill-current" : ""
+                  }`}
+                />
+              </div>
+            </button>
           </div>
         )}
       </div>

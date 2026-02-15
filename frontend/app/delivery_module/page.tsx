@@ -7,6 +7,7 @@ import { ActiveOrderCard } from '@/components/delivery/ActiveOrderCard';
 import { MapPlaceholder } from '@/components/delivery/MapPlaceholder';
 import { Package, Bike, Map as MapIcon, ChevronUp, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DeliveryNavbar } from '@/components/delivery/DeliveryNavbar';
 import { useState } from 'react';
 import { DriverStatus } from '@/types/delivery';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -87,40 +88,10 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-slate-50">
-      {/* Header */}
-      <header className="z-50 bg-white border-b border-border/50">
-        <div className="max-w-2xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl gradient-primary shadow-glow">
-                <Bike className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-orange-500">
-                  DeliverPro
-                </h1>
-                <p className="text-xs text-muted-foreground font-medium">Driver Console</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {!isLoggedIn ? (
-                <>
-                  <Button variant="ghost" onClick={() => setShowLogin(true)} className="rounded-xl">
-                    Log in
-                  </Button>
-                  <Button onClick={() => setShowSignup(true)} className="rounded-xl bg-gradient-to-r from-[#e4002b] to-[#ff6600] border-none">
-                    Sign up
-                  </Button>
-                </>
-              ) : (
-                <Button variant="ghost" onClick={logout} className="rounded-xl">
-                  Log out
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <DeliveryNavbar
+        onLoginClick={() => setShowLogin(true)}
+        onSignupClick={() => setShowSignup(true)}
+      />
 
       {/* Main content - Fixed area for Toggle and Map */}
       <main className="flex-1 overflow-hidden flex flex-col max-w-2xl mx-auto w-full relative">
