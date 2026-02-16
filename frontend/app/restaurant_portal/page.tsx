@@ -1,254 +1,299 @@
- "use client";
+"use client";
 
- import { useState } from "react";
- import { useRouter } from "next/navigation";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
- export default function RestaurantPortalPage() {
-   const router = useRouter();
-   const [mode, setMode] = useState<"login" | "register">("register");
+export default function RestaurantPortalPage() {
+  const router = useRouter();
+  const [mode, setMode] = useState<"login" | "register">("register");
 
-   const handleSubmit = (e: React.FormEvent) => {
-     e.preventDefault();
-     router.push("/restaurant_module");
-   };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.push("/restaurant_module");
+  };
 
-   return (
-     <div className="min-h-screen bg-gradient-to-br from-[#fff5f5] via-[#fffaf0] to-[#f0f4ff] flex items-center justify-center px-4 py-8">
-       <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
-        <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#e4002b] to-[#ff6600] text-white p-10 flex-col justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight mb-4">
-              Restaurant Portal
-            </h1>
-            <p className="text-sm text-white/80">
-              For assistance with your restaurant account, contact our admin team.
-            </p>
+  return (
+    <div className="h-screen flex flex-col overflow-hidden bg-neutral-50">
+      <header className="shrink-0 flex items-center justify-between px-6 h-14 border-b border-neutral-200/80 bg-white">
+        <Link
+          href="/consumer_module"
+          className="flex items-center gap-2 text-neutral-900 no-underline"
+        >
+          <div className="h-8 w-8 rounded-lg bg-[#e4002b] flex items-center justify-center">
+            <span className="text-white font-semibold text-sm">F</span>
           </div>
-          <div className="space-y-3 text-sm mt-8">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-white/70 mb-1">
-                Admin contacts
-              </p>
-              <p className="font-semibold">+95 9 7777 88888</p>
-              <p className="font-semibold">+95 9 6666 55555</p>
-              <p className="text-white/80 text-xs mt-2">
-                Available daily from 9:00 AM to 9:00 PM.
-              </p>
+          <span className="font-semibold text-neutral-900 tracking-tight">
+            Foodie
+          </span>
+        </Link>
+        <span className="text-sm text-neutral-500 font-medium">
+          Restaurant Portal
+        </span>
+      </header>
+
+      <main className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-4 py-6">
+        <div className="w-full max-w-[440px] max-h-full overflow-y-auto scrollbar-hide">
+          <div className="bg-white rounded-xl shadow-sm border border-neutral-200/80 p-8">
+            <div className="flex rounded-lg bg-neutral-100 p-1 mb-6">
+              <button
+                type="button"
+                onClick={() => setMode("register")}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all ${
+                  mode === "register"
+                    ? "bg-white text-neutral-900 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700"
+                }`}
+              >
+                Register
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all ${
+                  mode === "login"
+                    ? "bg-white text-neutral-900 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700"
+                }`}
+              >
+                Login
+              </button>
             </div>
+
+            <h1 className="text-xl font-semibold text-neutral-900 tracking-tight">
+              {mode === "register"
+                ? "Create restaurant account"
+                : "Welcome back"}
+            </h1>
+            <p className="text-neutral-500 text-sm mt-1 mb-6">
+              {mode === "register"
+                ? "Join Foodie and start accepting orders."
+                : "Sign in to manage your restaurant."}
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === "register" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-email"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        Email
+                      </Label>
+                      <Input
+                        id="rest-email"
+                        type="email"
+                        placeholder="restaurant@example.com"
+                        className="h-9 border-neutral-200 focus-visible:ring-[#e4002b]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-name"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        Restaurant name
+                      </Label>
+                      <Input
+                        id="rest-name"
+                        type="text"
+                        placeholder="e.g. La Terrazza"
+                        className="h-9 border-neutral-200 focus-visible:ring-[#e4002b]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-password"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        Password
+                      </Label>
+                      <Input
+                        id="rest-password"
+                        type="password"
+                        placeholder="Min 6 characters"
+                        className="h-9 border-neutral-200 focus-visible:ring-[#e4002b]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-confirm"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        Confirm password
+                      </Label>
+                      <Input
+                        id="rest-confirm"
+                        type="password"
+                        placeholder="Repeat password"
+                        className="h-9 border-neutral-200 focus-visible:ring-[#e4002b]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="rest-desc"
+                      className="text-neutral-700 text-sm font-medium"
+                    >
+                      Description
+                    </Label>
+                    <textarea
+                      id="rest-desc"
+                      placeholder="Short description of your restaurant"
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#e4002b] focus:border-transparent resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-cuisine"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        Cuisine type
+                      </Label>
+                      <Input
+                        id="rest-cuisine"
+                        type="text"
+                        placeholder="Italian, Sushi..."
+                        className="h-9 border-neutral-200 focus-visible:ring-[#e4002b]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-city"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        City
+                      </Label>
+                      <select
+                        id="rest-city"
+                        className="w-full h-9 px-3 text-sm border border-neutral-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#e4002b] focus:border-transparent"
+                      >
+                        <option value="">Select city</option>
+                        <option value="yangon">Yangon</option>
+                        <option value="mandalay">Mandalay</option>
+                        <option value="naypyidaw">Naypyidaw</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-lat"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        Latitude
+                      </Label>
+                      <Input
+                        id="rest-lat"
+                        type="text"
+                        placeholder="e.g. 16.8409"
+                        className="h-9 border-neutral-200 focus-visible:ring-[#e4002b]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="rest-lng"
+                        className="text-neutral-700 text-sm font-medium"
+                      >
+                        Longitude
+                      </Label>
+                      <Input
+                        id="rest-lng"
+                        type="text"
+                        placeholder="e.g. 96.1735"
+                        className="h-9 border-neutral-200 focus-visible:ring-[#e4002b]"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {mode === "login" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="rest-login-email"
+                      className="text-neutral-700 text-sm font-medium"
+                    >
+                      Email
+                    </Label>
+                    <Input
+                      id="rest-login-email"
+                      type="email"
+                      placeholder="restaurant@example.com"
+                      className="h-10 border-neutral-200 focus-visible:ring-[#e4002b]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="rest-login-password"
+                      className="text-neutral-700 text-sm font-medium"
+                    >
+                      Password
+                    </Label>
+                    <Input
+                      id="rest-login-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      className="h-10 border-neutral-200 focus-visible:ring-[#e4002b]"
+                    />
+                  </div>
+                </>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full h-10 bg-[#e4002b] hover:bg-[#c40026] text-white font-medium text-sm mt-2"
+              >
+                {mode === "register" ? "Create account" : "Sign in"}
+              </Button>
+
+              <p className="text-center text-neutral-500 text-sm pt-1">
+                {mode === "register" ? (
+                  <>
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      className="font-medium text-[#e4002b] hover:underline"
+                      onClick={() => setMode("login")}
+                    >
+                      Sign in
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Need an account?{" "}
+                    <button
+                      type="button"
+                      className="font-medium text-[#e4002b] hover:underline"
+                      onClick={() => setMode("register")}
+                    >
+                      Register
+                    </button>
+                  </>
+                )}
+              </p>
+            </form>
           </div>
+
+          <p className="mt-6 text-center text-neutral-400 text-xs">
+            For help with your restaurant account, contact admin: +95 9 7777 88888
+          </p>
         </div>
-
-         <div className="w-full md:w-1/2 p-8 md:p-10">
-           <div className="mb-6 text-center md:text-left">
-             <h2 className="text-2xl font-bold text-gray-900 mb-1">
-               {mode === "register" ? "Create restaurant account" : "Welcome back"}
-             </h2>
-             <p className="text-gray-600 text-sm">
-               {mode === "register"
-                 ? "Join Foodie and start accepting online orders."
-                 : "Sign in to manage your restaurant."}
-             </p>
-           </div>
-
-           <div className="flex mb-6 rounded-lg bg-gray-100 p-1">
-             <button
-               type="button"
-               onClick={() => setMode("register")}
-               className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${
-                 mode === "register"
-                   ? "bg-white shadow-sm text-[#e4002b]"
-                   : "text-gray-500 hover:text-gray-700"
-               }`}
-             >
-               Register
-             </button>
-             <button
-               type="button"
-               onClick={() => setMode("login")}
-               className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${
-                 mode === "login"
-                   ? "bg-white shadow-sm text-[#e4002b]"
-                   : "text-gray-500 hover:text-gray-700"
-               }`}
-             >
-               Login
-             </button>
-           </div>
-
-           <form onSubmit={handleSubmit} className="space-y-4">
-             {mode === "register" && (
-               <>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Email address
-                     </label>
-                     <input
-                       type="email"
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                       placeholder="restaurant@example.com"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Restaurant brand name
-                     </label>
-                     <input
-                       type="text"
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                       placeholder="La Terrazza"
-                     />
-                   </div>
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Password
-                     </label>
-                     <input
-                       type="password"
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                       placeholder="Create a strong password"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Confirm password
-                     </label>
-                     <input
-                       type="password"
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                       placeholder="Confirm your password"
-                     />
-                   </div>
-                 </div>
-
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                     Description
-                   </label>
-                   <textarea
-                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                     placeholder="Short description of your restaurant"
-                     rows={3}
-                   />
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Cuisine type
-                     </label>
-                     <input
-                       type="text"
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                       placeholder="Italian, Sushi, Fast food..."
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       City
-                     </label>
-                     <select
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors bg-white"
-                       defaultValue=""
-                     >
-                       <option value="" disabled>
-                         Select city
-                       </option>
-                       <option value="yangon">Yangon</option>
-                       <option value="mandalay">Mandalay</option>
-                       <option value="naypyidaw">Naypyidaw</option>
-                     </select>
-                   </div>
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Latitude
-                     </label>
-                     <input
-                       type="text"
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                       placeholder="e.g. 16.8409"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Longitude
-                     </label>
-                     <input
-                       type="text"
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                       placeholder="e.g. 96.1735"
-                     />
-                   </div>
-                 </div>
-               </>
-             )}
-
-             {mode === "login" && (
-               <>
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                     Email address
-                   </label>
-                   <input
-                     type="email"
-                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                     placeholder="restaurant@example.com"
-                   />
-                 </div>
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                     Password
-                   </label>
-                   <input
-                     type="password"
-                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e4002b] focus:border-transparent transition-colors"
-                     placeholder="Enter your password"
-                   />
-                 </div>
-               </>
-             )}
-
-             <button
-               type="submit"
-               className="w-full bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white py-3 px-4 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 hover:scale-[1.02] mt-4"
-             >
-               {mode === "register" ? "Register restaurant" : "Login"}
-             </button>
-
-             <div className="mt-4 text-center text-sm text-gray-600">
-               {mode === "register" ? (
-                 <p>
-                   Already have an account?{" "}
-                   <button
-                     type="button"
-                     className="text-[#e4002b] hover:text-[#c41e3a] font-semibold transition-colors"
-                     onClick={() => setMode("login")}
-                   >
-                     Login
-                   </button>
-                 </p>
-               ) : (
-                 <p>
-                   Need to create your restaurant?{" "}
-                   <button
-                     type="button"
-                     className="text-[#e4002b] hover:text-[#c41e3a] font-semibold transition-colors"
-                     onClick={() => setMode("register")}
-                   >
-                     Register
-                   </button>
-                 </p>
-               )}
-             </div>
-           </form>
-         </div>
-       </div>
-     </div>
-   );
- }
+      </main>
+    </div>
+  );
+}

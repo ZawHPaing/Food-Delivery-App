@@ -1,5 +1,4 @@
 from typing import Optional
-from datetime import datetime
 from ..repositories.user_repo import UserRepository
 from ..repositories.delivery_repo import DeliveryRepository
 from ..core.security import hash_password, verify_password, create_access_token
@@ -53,7 +52,7 @@ class AuthService:
         # Hash password
         hashed_pwd = hash_password(signup_data["password"])
         
-        # Create user
+        # Create user (omit created_at/updated_at; DB defaults handle them)
         user_data = {
             "email": signup_data["email"],
             "password_hash": hashed_pwd,
@@ -61,8 +60,6 @@ class AuthService:
             "last_name": signup_data["last_name"],
             "phone": signup_data["phone"],
             "user_type": signup_data["user_type"],
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
         }
         
         user = UserRepository.create_user(user_data)
@@ -94,3 +91,20 @@ class AuthService:
             "user": user,
             "access_token": token
         }
+
+    @staticmethod
+    def authenticate_user_exclude_rider(email: str, password: str) -> Optional[dict]:
+        """Authenticate a user but reject riders (for customer/restaurant login only)."""
+        result = AuthService.authenticate_user(email, password, expected_user_type=None)
+        if result and result.get("user_type") == "rider":
+            return None
+        return result
+
+    @staticmethod
+    def create_user_account_user_only(signup_data: dict) -> Optional[dict]:
+        """Create user account for customers/restaurant only. Rejects rider signup."""
+        if signup_data.get("user_type") == "rider":
+            return None
+        if signup_data.get("user_type") not in ("customer", "restaurant"):
+            signup_data = {**signup_data, "user_type": "customer"}
+        return AuthService.create_user_account(signup_data)

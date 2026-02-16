@@ -342,7 +342,7 @@ export const menuItemsByRestaurant: Record<number, MenuItemWithCategory[]> = {
       description: "Crispy wings tossed in spicy buffalo sauce.",
       price_cents: 899,
       is_available: true,
-      image: "https://images.unsplash.com/photo-1608039829572-a6a5e3b29f2f?w=400&h=300&fit=crop",
+      image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
       calories: 480,
       isSpicy: true,
       categories: [{ id: 3, name: "Chicken" }, { id: 9, name: "Appetizers" }],

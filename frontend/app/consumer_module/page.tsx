@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import SearchBar from "@/components/ui/SearchBar";
 import CategoryFilter from "@/components/ui/CategoryFilter";
 import RestaurantGrid from "@/components/ui/RestaurantGrid";
@@ -320,6 +321,21 @@ export default function Home() {
                   <a href="#" className="hover:text-white transition-colors">
                     Contact
                   </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Account</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <Link href="/login" className="hover:text-white transition-colors">
+                    Sign in
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/register" className="hover:text-white transition-colors">
+                    Create account
+                  </Link>
                 </li>
               </ul>
             </div>
