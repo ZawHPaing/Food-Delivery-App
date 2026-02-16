@@ -5,11 +5,22 @@ from .config import SECRET_KEY, ALGORITHM
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+def _truncate_password_to_72(password: str) -> str:
+    if password is None:
+        return ""
+    if not isinstance(password, str):
+        password = str(password)
+    b = password.encode("utf-8")[:72]
+    # decode ignoring partial multi-byte chars at the end
+    return b.decode("utf-8", "ignore")
+
 def hash_password(password: str):
-    return pwd_context.hash(password)
+    safe = _truncate_password_to_72(password)
+    return pwd_context.hash(safe)
 
 def verify_password(password, hashed):
-    return pwd_context.verify(password, hashed)
+    safe = _truncate_password_to_72(password)
+    return pwd_context.verify(safe, hashed)
 
 def create_access_token(data: dict, expires_delta=None):
     to_encode = data.copy()
