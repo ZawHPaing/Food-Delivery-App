@@ -3,10 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import LoginOverlay from "./LoginOverlay";
-import SignupOverlay from "./SignupOverlay";
 import CartSidebar from "./CartSidebar";
-import { useAuth } from "@/app/_providers/AuthProvider";
+import { useCustomerAuth } from "@/app/_providers/CustomerAuthProvider";
 import { useCart } from "@/app/_providers/CartProvider";
 import { useFavorites } from "@/app/_providers/FavoritesProvider";
 
@@ -15,13 +13,11 @@ export default function Header() {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("EN");
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const [showLoginOverlay, setShowLoginOverlay] = useState(false);
-  const [showSignupOverlay, setShowSignupOverlay] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const locationRef = useRef<HTMLDivElement>(null);
   const languageRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn, user, logout } = useAuth();
+  const { isLoggedIn, user, logout } = useCustomerAuth();
   const { itemCount, isCartOpen, openCart, closeCart } = useCart();
   const {
     items: favoriteItems,
@@ -60,38 +56,6 @@ export default function Header() {
     };
   }, []);
 
-  const handleLoginClick = () => {
-    setShowProfileDropdown(false);
-    setShowLoginOverlay(true);
-    setShowSignupOverlay(false);
-  };
-
-  const handleSignupClick = () => {
-    setShowProfileDropdown(false);
-    setShowSignupOverlay(true);
-    setShowLoginOverlay(false);
-  };
-
-  const handleCloseOverlays = () => {
-    setShowLoginOverlay(false);
-    setShowSignupOverlay(false);
-  };
-
-  const handleSwitchToSignup = () => {
-    setShowLoginOverlay(false);
-    setShowSignupOverlay(true);
-  };
-
-  const handleSwitchToLogin = () => {
-    setShowSignupOverlay(false);
-    setShowLoginOverlay(true);
-  };
-
-  const handleLoginSuccess = () => {
-    handleCloseOverlays();
-    setShowProfileDropdown(true);
-  };
-
   const handleFavoriteClick = () => {
     openFavorites();
   };
@@ -103,7 +67,10 @@ export default function Header() {
   const locations = ["Yangon", "Mandalay", "Naypyidaw", "Bago", "Mawlamyine"];
   const languages = ["EN", "MY", "TH", "CN"];
 
-  const displayName = user?.username ?? "user";
+  const displayName =
+    (user?.first_name && user?.last_name
+      ? `${user.first_name} ${user.last_name}`.trim()
+      : user?.first_name || user?.email) || "Account";
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow-md">
@@ -200,21 +167,21 @@ export default function Header() {
           <div className="flex items-center space-x-3 md:space-x-4">
             {!isLoggedIn ? (
               <>
-                {/* Login Button */}
-                <button
-                  onClick={handleLoginClick}
-                  className="border-2 border-gray-300 px-4 py-2 rounded-lg font-semibold text-gray-700 hover:border-[#e4002b] hover:text-[#e4002b] transition-colors text-sm md:text-base"
+                {/* Log in → /login */}
+                <Link
+                  href="/login"
+                  className="border-2 border-gray-300 px-4 py-2 rounded-lg font-semibold text-gray-700 hover:border-[#e4002b] hover:text-[#e4002b] transition-colors text-sm md:text-base inline-block"
                 >
                   Log in
-                </button>
+                </Link>
 
-                {/* Sign Up Button */}
-                <button
-                  onClick={handleSignupClick}
-                  className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 hover:scale-105 text-sm md:text-base whitespace-nowrap"
+                {/* Sign up for free delivery → /register */}
+                <Link
+                  href="/register"
+                  className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 hover:scale-105 text-sm md:text-base whitespace-nowrap inline-block text-center"
                 >
                   Sign up for free delivery
-                </button>
+                </Link>
               </>
             ) : (
               <div ref={profileRef} className="relative">
@@ -421,19 +388,6 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Overlays */}
-      <LoginOverlay
-        isOpen={showLoginOverlay}
-        onClose={handleCloseOverlays}
-        onSwitchToSignup={handleSwitchToSignup}
-        onLoginSuccess={handleLoginSuccess}
-      />
-      <SignupOverlay
-        isOpen={showSignupOverlay}
-        onClose={handleCloseOverlays}
-        onSwitchToLogin={handleSwitchToLogin}
-        onLoginSuccess={handleLoginSuccess}
-      />
       <CartSidebar isOpen={isCartOpen} onClose={closeCart} />
 
       <div

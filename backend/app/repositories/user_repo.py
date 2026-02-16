@@ -25,9 +25,16 @@ class UserRepository:
     
     @staticmethod
     def create_user(user_data: dict) -> Optional[Dict]:
-        """Create a new user"""
+        """Create a new user. Handles Supabase returning row as list or single object."""
         response = supabase.table("users").insert(user_data).execute()
-        return response.data[0] if response.data else None
+        if not response.data:
+            return None
+        data = response.data
+        if isinstance(data, list) and len(data) > 0:
+            return data[0]
+        if isinstance(data, dict):
+            return data
+        return None
     
     @staticmethod
     def update_user(user_id: int, user_data: dict) -> Optional[Dict]:
@@ -36,8 +43,13 @@ class UserRepository:
             .update(user_data) \
             .eq("id", user_id) \
             .execute()
-        return response.data[0] if response.data else None
-    
+        data = response.data
+        if isinstance(data, list) and len(data) > 0:
+            return data[0]
+        if isinstance(data, dict):
+            return data
+        return None
+
     @staticmethod
     def find_users_by_email_pattern(email_pattern: str) -> List[Dict]:
         """Find users by email pattern (for username search)"""
