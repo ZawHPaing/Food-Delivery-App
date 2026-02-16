@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import delivery_routes, auth_routes
+from app.routes import delivery_routes, auth_routes, admin_users_routes
 
 app = FastAPI(title="Food Delivery Backend")
 
@@ -16,6 +16,7 @@ app.add_middleware(
 # Include routers
 app.include_router(delivery_routes.router)  # /delivery/*
 app.include_router(auth_routes.router)      # /auth/*
+app.include_router(admin_users_routes.router)
 
 @app.get("/")
 def root():
