@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Package, MapPin, Clock, Check } from "lucide-react";
+import { useAuth } from "@/app/_providers/AuthProvider";
 
 interface Delivery {
   id: number;
@@ -13,30 +14,43 @@ interface Delivery {
 }
 
 export default function HistoryPage() {
+  const { user } = useAuth();
+  const riderId = user?.rider?.id;
+
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!riderId) return;
+
     async function fetchHistory() {
       try {
-        const res = await fetch(`http://localhost:8000/delivery/history?rider_id=8`);
+        const res = await fetch(`http://localhost:8000/delivery/history?rider_id=${riderId}`);
         const data = await res.json();
-        setDeliveries(data.deliveries);
+        setDeliveries(data.deliveries ?? []);
       } catch (err) {
         console.error("Failed to fetch delivery history", err);
       } finally {
         setLoading(false);
       }
     }
-    fetchHistory();
-  }, []);
 
+    fetchHistory();
+  }, [riderId]);
+
+  // Sort so newest deliveries are first
+  const sortedDeliveries = [...deliveries].sort(
+    (a, b) => new Date(b.delivered_at).getTime() - new Date(a.delivered_at).getTime()
+  );
+
+  // Today’s summary
   const todayDeliveries = deliveries.filter(
     (d) => new Date(d.delivered_at).getTime() > Date.now() - 86400000
   );
-  const todayEarnings = todayDeliveries.reduce((sum, d) => sum + d.earnings_cents / 100, 0);
+  const todayEarnings = todayDeliveries.reduce((sum, d) => sum + d.earnings_cents, 0);
   const todayDistance = todayDeliveries.reduce((sum, d) => sum + d.distance_km, 0);
 
+  if (!riderId) return <p className="text-center mt-10">No rider assigned.</p>;
   if (loading) return <p className="text-center mt-10">Loading...</p>;
 
   return (
@@ -53,22 +67,28 @@ export default function HistoryPage() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="p-6 rounded-2xl gradient-primary shadow-glow mb-6">
           <p className="text-primary-foreground/80 text-sm mb-1">Today's Earnings</p>
-          <p className="text-4xl font-bold text-primary-foreground">{todayDeliveries.reduce((sum, d) => sum + d.earnings_cents, 0)} MMK</p>
+          <p className="text-4xl font-bold text-primary-foreground">
+            {todayEarnings} MMK
+          </p>
           <div className="flex items-center gap-4 mt-4">
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4 text-primary-foreground/80" />
-              <span className="text-sm text-primary-foreground/80">{todayDeliveries.length} deliveries</span>
+              <span className="text-sm text-primary-foreground/80">
+                {todayDeliveries.length} deliveries
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-primary-foreground/80" />
-              <span className="text-sm text-primary-foreground/80">{todayDistance.toFixed(1)} km</span>
+              <span className="text-sm text-primary-foreground/80">
+                {todayDistance.toFixed(1)} km
+              </span>
             </div>
           </div>
         </div>
 
         {/* History list */}
         <div className="space-y-3">
-          {deliveries.map((order) => (
+          {sortedDeliveries.map((order) => (
             <div
               key={order.id}
               className="p-4 rounded-xl bg-card shadow-card border border-border animate-fade-in"
@@ -93,7 +113,13 @@ export default function HistoryPage() {
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
                   <span>
-                    {new Date(order.delivered_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(order.delivered_at).toLocaleString([], {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
               </div>
