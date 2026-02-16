@@ -57,12 +57,17 @@ export default function Dashboard() {
         return;
       }
 
-      const url = `http://localhost:8000/delivery/status?rider_id=${encodeURIComponent(riderId)}&status=${encodeURIComponent(nextStatusBackend)}`;
+      const url = `http://localhost:8000/delivery/status`;
       const res = await fetch(url, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({
+          rider_id: riderId,
+          status: nextStatusBackend,
+        }),
       });
 
       if (!res.ok) {
