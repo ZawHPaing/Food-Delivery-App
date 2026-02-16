@@ -3,7 +3,7 @@
 import { useDeliveryState } from '@/hooks/useDeliveryState';
 import { StatusToggle } from '@/components/delivery/StatusToggle';
 import { VehicleSelector } from '@/components/delivery/VehicleSelector';
-import { User, Star, DollarSign, Package } from 'lucide-react';
+import { User, Star, DollarSign, Package, Truck } from 'lucide-react';
 import { DriverStatus, VehicleType } from '@/types/delivery';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import LoginOverlay from '@/components/ui/LoginOverlay';
@@ -47,12 +47,17 @@ export default function ProfilePage() {
         return;
       }
 
-      const url = `http://localhost:8000/delivery/status?rider_id=${encodeURIComponent(riderId)}&status=${encodeURIComponent(nextStatusBackend)}`;
+      const url = `http://localhost:8000/delivery/status`;
       const res = await fetch(url, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({
+          rider_id: riderId,
+          status: nextStatusBackend,
+        }),
       });
 
       if (!res.ok) {
@@ -76,11 +81,12 @@ export default function ProfilePage() {
       console.error(`Error updating status: ${String(err)}`);
     }
   }
-  const stats = [
-    { icon: Package, label: 'Deliveries', value: String(deliveriesCount) },
-    { icon: Star, label: 'Rating', value: '4.9' },
-    { icon: DollarSign, label: 'Earnings', value: earningsDisplay },
-  ];
+    const licensePlate = (user as any)?.rider?.license_plate ?? 'N/A';
+    const stats = [
+      { icon: Package, label: 'Deliveries', value: String(deliveriesCount) },
+      { icon: Truck, label: 'Vehicle Plate', value: licensePlate },
+      { icon: DollarSign, label: 'Earnings', value: earningsDisplay },
+    ];
 
   // Map registered vehicle from backend rider profile to UI vehicle type
   const registeredVehicle: VehicleType | null = useMemo(() => {
