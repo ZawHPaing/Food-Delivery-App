@@ -122,7 +122,7 @@ export default function LoginOverlay({ isOpen, onClose, onSwitchToSignup, onLogi
           {/* Social login removed per design request */}
 
           {/* Switch to signup */}
-          <div className="mt-6 text-center">
+          {/* <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{" "}
               <button
@@ -133,7 +133,7 @@ export default function LoginOverlay({ isOpen, onClose, onSwitchToSignup, onLogi
                 Sign up
               </button>
             </p>
-          </div>
+          </div> */}
         </form>
       </div>
     </div>
