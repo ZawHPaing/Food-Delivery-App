@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
 from typing import Optional
 
 from ..models.customer_models import (
@@ -16,6 +16,7 @@ from ..models.customer_models import (
     CustomerProfileUpdate,
 )
 from ..services.customer_service import CustomerService
+from ..services.dispatch_service import DispatchService
 from ..core.security import decode_access_token
 
 router = APIRouter(prefix="/customer", tags=["Customer"])
@@ -110,15 +111,25 @@ def get_payment(payment_id: int, user_id: int = Depends(get_current_customer_id)
 
 # ----- Orders -----
 @router.post("/orders", response_model=OrderPlaceResponse)
-def place_order(data: OrderCreate, user_id: int = Depends(get_current_customer_id)):
+def place_order(
+    data: OrderCreate,
+    background_tasks: BackgroundTasks,
+    user_id: int = Depends(get_current_customer_id),
+):
     """Place order. Use delivery_address text or address_id to resolve from saved address; prices from menu_items."""
     delivery_address = data.delivery_address or ""
+    delivery_latitude = data.delivery_latitude
+    delivery_longitude = data.delivery_longitude
     if data.address_id is not None:
         addr = CustomerService.get_address(user_id, data.address_id)
         if addr:
             delivery_address = CustomerService.format_address_as_text(
                 {"street": addr.street, "city": addr.city, "state": addr.state, "postal_code": addr.postal_code, "country": addr.country}
             )
+            if delivery_latitude is None and addr.latitude is not None:
+                delivery_latitude = addr.latitude
+            if delivery_longitude is None and addr.longitude is not None:
+                delivery_longitude = addr.longitude
     if not delivery_address.strip():
         raise HTTPException(status_code=400, detail="delivery_address or address_id required")
     items = [
@@ -133,6 +144,8 @@ def place_order(data: OrderCreate, user_id: int = Depends(get_current_customer_i
         user_id,
         data.restaurant_id,
         delivery_address,
+        delivery_latitude,
+        delivery_longitude,
         data.payment_method,
         data.tax_cents,
         data.delivery_fee_cents,
@@ -143,6 +156,12 @@ def place_order(data: OrderCreate, user_id: int = Depends(get_current_customer_i
             status_code=400,
             detail="Failed to place order (check restaurant and menu items)",
         )
+    background_tasks.add_task(
+        DispatchService.dispatch_order,
+        order.id,
+        delivery_latitude,
+        delivery_longitude,
+    )
     return {"message": "Order placed", "order": order}
 
 
