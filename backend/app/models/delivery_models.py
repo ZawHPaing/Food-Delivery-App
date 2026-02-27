@@ -26,6 +26,8 @@ class RiderLoginResponse(BaseModel):
     access_token: str
     token_type: str
     email: EmailStr
+    user_id: Optional[int] = None
+    rider_id: Optional[int] = None
 
 class RiderSignUpResponse(BaseModel):
     message: str
@@ -56,3 +58,8 @@ class RiderProfileResponse(BaseModel):
 class UpdateStatusResponse(BaseModel):
     success: bool
     status: str
+
+class UpdateLocationRequest(BaseModel):
+    rider_id: int
+    latitude: float
+    longitude: float

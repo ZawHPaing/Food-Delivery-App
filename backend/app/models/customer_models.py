@@ -64,6 +64,8 @@ class OrderCreate(BaseModel):
     restaurant_id: int
     delivery_address: str = ""  # full address text (or use address_id to resolve)
     address_id: Optional[int] = None  # if set, resolve to delivery_address from saved address
+    delivery_latitude: Optional[float] = None
+    delivery_longitude: Optional[float] = None
     payment_method: str = "card"  # for the payment record
     tax_cents: int = 0
     delivery_fee_cents: int = 0

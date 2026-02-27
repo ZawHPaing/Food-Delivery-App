@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, WebSocket, WebSocketDisconnect
 from typing import Optional
 from ..models.delivery_models import (
     RiderLoginRequest, RiderLoginResponse,
     RiderSignUpRequest, RiderSignUpResponse,
     UpdateRiderStatusRequest, UpdateStatusResponse,
-    DeliveryHistoryResponse, RiderProfileResponse
+    DeliveryHistoryResponse, RiderProfileResponse,
+    UpdateLocationRequest
 )
 from ..services.delivery_service import DeliveryService
+from ..services.dispatch_service import DispatchService
 from ..repositories.delivery_repo import DeliveryRepository
+from ..core.websocket_manager import manager
 
 router = APIRouter(prefix="/delivery", tags=["Delivery"])
 
@@ -66,3 +69,39 @@ def update_rider_status(request: UpdateRiderStatusRequest):
     if not success:
         raise HTTPException(status_code=400, detail="Failed to update status")
     return {"success": True, "status": request.status}
+@router.post("/location")
+def update_rider_location(request: UpdateLocationRequest):
+    """Update rider GPS coordinates"""
+    success = DeliveryService.update_rider_location(
+        request.rider_id, 
+        request.latitude, 
+        request.longitude
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to update location")
+    return {"success": True}
+
+# ----- WebSockets & Dispatch -----
+
+@router.websocket("/ws/{rider_user_id}")
+async def rider_websocket(websocket: WebSocket, rider_user_id: int):
+    """Rider WebSocket connection for real-time order requests."""
+    await manager.connect(rider_user_id, websocket)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(rider_user_id)
+
+@router.post("/requests/{request_id}/respond")
+async def respond_to_request(request_id: int, action: str, rider_id: int):
+    """Rider accepts or rejects a dispatch request."""
+    if action not in ["accept", "reject"]:
+        raise HTTPException(status_code=400, detail="Invalid action")
+        
+    success, msg = await DispatchService.handle_rider_response(rider_id, request_id, action)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+        
+    return {"success": True, "message": msg}
