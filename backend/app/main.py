@@ -2,21 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes, consumer_routes, admin_restaurants_routes, menu_routes
-import os
+from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes
 
 # Allowed frontend origins for CORS
 CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 app = FastAPI(title="Food Delivery Backend")
-
-# Serve uploaded images
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads")
-os.makedirs(os.path.join(UPLOADS_DIR, "menu_items"), exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # CORS – add first so it wraps all responses including errors
 app.add_middleware(
@@ -81,9 +74,6 @@ app.include_router(delivery_routes.router)   # /delivery/*
 app.include_router(auth_routes.router)       # /auth/*
 app.include_router(admin_users_routes.router)
 app.include_router(customer_routes.router)   # /customer/*
-app.include_router(consumer_routes.router)   # /consumer/*
-app.include_router(admin_restaurants_routes.router) # /restaurant/*
-app.include_router(menu_routes.router)
 
 @app.get("/")
 def root():

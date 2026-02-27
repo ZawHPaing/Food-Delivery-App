@@ -124,15 +124,4 @@ class DeliveryRepository:
             .update({"status": status}) \
             .eq("id", rider_id) \
             .execute()
-        return len(response.data) > 0 if response.data else False
-
-    @staticmethod
-    def update_rider_location(rider_id: int, latitude: float, longitude: float) -> bool:
-        """Update rider GPS location"""
-        from datetime import datetime
-        response = supabase.table("riders").update({
-            "current_latitude": latitude,
-            "current_longitude": longitude,
-            "last_location_update": datetime.utcnow().isoformat()
-        }).eq("id", rider_id).execute()
-        return len(response.data) > 0 if response.data else False
+        return response.count > 0
