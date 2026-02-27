@@ -108,8 +108,6 @@ class CustomerService:
         user_id: int,
         restaurant_id: int,
         delivery_address: str,
-        delivery_latitude: Optional[float],
-        delivery_longitude: Optional[float],
         payment_method: str,
         tax_cents: int,
         delivery_fee_cents: int,

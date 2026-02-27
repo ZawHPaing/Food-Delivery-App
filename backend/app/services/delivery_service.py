@@ -16,20 +16,13 @@ class DeliveryService:
         if not verify_password(password, user["password_hash"]):
             return None
         
-        rider = DeliveryRepository.get_rider_by_user_id(user["id"])
-        token = create_access_token({
-            "email": user["email"],
-            "user_id": user["id"],
-            "user_type": "rider",
-        })
+        token = create_access_token({"email": user["email"]})
         
         return {
             "message": "Login successful",
             "access_token": token,
             "token_type": "bearer",
-            "email": user["email"],
-            "user_id": user["id"],
-            "rider_id": rider["id"] if rider else None,
+            "email": user["email"]
         }
     
     @staticmethod
@@ -72,11 +65,7 @@ class DeliveryService:
         if not rider:
             return None
         
-        token = create_access_token({
-            "email": user["email"],
-            "user_id": user["id"],
-            "user_type": "rider",
-        })
+        token = create_access_token({"email": user["email"]})
         
         return {
             "message": "Rider signup successful!",
@@ -136,8 +125,6 @@ class DeliveryService:
                     d["delivery_fee_cents"] = orders.get(d["order_id"], {}).get("delivery_fee_cents", 0)
         
         return {
-            "id": user.get("id"),
-            "username": user.get("email"),
             "first_name": user.get("first_name"),
             "last_name": user.get("last_name"),
             "email": user.get("email"),
@@ -152,8 +139,3 @@ class DeliveryService:
         if status not in ["available", "unavailable"]:
             return False
         return DeliveryRepository.update_rider_status(rider_id, status)
-
-    @staticmethod
-    def update_rider_location(rider_id: int, latitude: float, longitude: float) -> bool:
-        """Update rider GPS location"""
-        return DeliveryRepository.update_rider_location(rider_id, latitude, longitude)
