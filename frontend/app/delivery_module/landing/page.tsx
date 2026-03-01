@@ -38,20 +38,20 @@ export default function DeliveryLandingPage() {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <Link href="/consumer_module" className="flex items-center space-x-2">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center shadow-lg shadow-orange-200">
-              <span className="text-white font-bold text-xl">F</span>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100/80">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-6xl">
+          <Link href="/consumer_module" className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center shadow-md">
+              <span className="text-white font-bold text-lg">F</span>
             </div>
-            <span className="text-2xl font-bold text-[#e4002b] tracking-tight">Foodie</span>
+            <span className="text-xl font-bold text-gray-900 tracking-tight">Foodie</span>
           </Link>
           <div className="flex items-center gap-3">
             {!isLoggedIn ? (
               <>
                 <button
                   onClick={() => setShowLogin(true)}
-                  className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white px-5 py-2 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-orange-200 active:scale-95 transition-all"
+                  className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 active:scale-[0.98] transition-all duration-200 shadow-sm"
                 >
                   Log in
                 </button>
@@ -82,60 +82,58 @@ export default function DeliveryLandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
-        {/* Abstract Background Shapes */}
-        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] bg-orange-50 rounded-full blur-3xl opacity-60" />
-        <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[400px] h-[400px] bg-red-50 rounded-full blur-3xl opacity-60" />
+      <section className="relative pt-28 pb-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-50/80 to-white pointer-events-none" />
+        <div className="absolute top-20 right-0 w-[500px] h-[500px] bg-amber-50/50 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-20 left-0 w-[350px] h-[350px] bg-rose-50/50 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="container mx-auto px-8 md:px-16 lg:px-24 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-16">
+        <div className="container mx-auto px-6 sm:px-8 lg:px-12 relative z-10 max-w-6xl">
+          <div className="flex flex-col lg:flex-row items-center gap-14 lg:gap-20">
             {/* Text Content */}
             <div className="flex-1 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-100 mb-6">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff6600] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff6600]"></span>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-700 mb-6 text-xs font-semibold uppercase tracking-wider">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                 </span>
-                <span className="text-[#ff6600] text-xs font-bold uppercase tracking-wider">Join 10,000+ Riders</span>
+                Join 10,000+ riders
               </div>
-              <h1 className="text-5xl lg:text-7xl font-extrabold mb-6 leading-[1.1] tracking-tight">
-                Become a <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e4002b] to-[#ff6600]">Rider</span> & Start Earning
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-5 leading-[1.15] tracking-tight text-gray-900">
+                Become a{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e4002b] to-[#f97316]">Rider</span>
+                <br className="hidden sm:block" />& start earning
               </h1>
-              <p className="text-xl text-gray-600 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Choose your own hours, explore your city, and get paid weekly. 
-                Everything you need to succeed is right in your pocket.
+              <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto lg:mx-0 leading-relaxed">
+                Choose your own hours, explore your city, and get paid weekly. Everything you need is in your pocket.
               </p>
-              
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-10 max-w-lg mx-auto lg:mx-0">
-                <div className="flex flex-col items-center lg:items-start gap-2">
-                  <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100">
-                    <Clock className="w-6 h-6 text-[#ff6600]" />
+
+              <div className="flex flex-wrap justify-center lg:justify-start gap-4 sm:gap-6">
+                {[
+                  { Icon: Clock, label: "Flexible Hours", color: "text-amber-600 bg-amber-50 border-amber-100" },
+                  { Icon: DollarSign, label: "Weekly Payouts", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
+                  { Icon: Gift, label: "Rider Bonuses", color: "text-rose-600 bg-rose-50 border-rose-100" },
+                ].map(({ Icon, label, color }) => (
+                  <div
+                    key={label}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all duration-200 ${color}`}
+                  >
+                    <div className="p-2 rounded-xl bg-white/80">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">{label}</span>
                   </div>
-                  <span className="text-sm font-bold">Flexible Hours</span>
-                </div>
-                <div className="flex flex-col items-center lg:items-start gap-2">
-                  <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100">
-                    <DollarSign className="w-6 h-6 text-green-500" />
-                  </div>
-                  <span className="text-sm font-bold">Weekly Payouts</span>
-                </div>
-                <div className="flex flex-col items-center lg:items-start gap-2">
-                  <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100">
-                    <Gift className="w-6 h-6 text-orange-500" />
-                  </div>
-                  <span className="text-sm font-bold">Rider Bonuses</span>
-                </div>
+                ))}
               </div>
             </div>
 
             {/* Application Form Card */}
-            <div className="w-full max-w-md">
-              <div className="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-[#e4002b] to-[#ff6600] p-8 text-center text-white">
-                  <h3 className="text-2xl font-bold mb-2">Apply Now</h3>
-                  <p className="text-orange-50 text-sm">Fill in your details to get started</p>
+            <div className="w-full max-w-[420px] shrink-0">
+              <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/60 border border-gray-100 overflow-hidden transition-shadow hover:shadow-2xl hover:shadow-gray-200/50 duration-300">
+                <div className="bg-gradient-to-r from-[#e4002b] via-[#ea1a3a] to-[#f97316] px-8 py-7 text-center text-white">
+                  <h3 className="text-xl font-bold tracking-tight">Apply now</h3>
+                  <p className="text-white/90 text-sm mt-1">Fill in your details to get started</p>
                 </div>
-                <form className="p-8 space-y-6" onSubmit={async (e) => {
+                <form className="p-6 sm:p-8 space-y-5" onSubmit={async (e) => {
                   e.preventDefault();
                   setMessage(null);
                   if (!agreed) { setMessage('You must agree to terms.'); return; }
@@ -173,60 +171,60 @@ export default function DeliveryLandingPage() {
                   } finally { setLoading(false); }
                 }}>
                   <div className="space-y-4">
-                    <div className="relative">
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">
-                        Select your city
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">
+                        City
                       </label>
                       <div className="relative group">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#e4002b] transition-colors" />
-                        <select 
-                          className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl appearance-none transition-all outline-none font-medium text-gray-700"
+                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#e4002b] transition-colors pointer-events-none z-10" />
+                        <select
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
+                          className="w-full pl-11 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium outline-none transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20 appearance-none cursor-pointer"
                         >
                           <option value="">Where will you deliver?</option>
                           <option value="yangon">Yangon</option>
                           <option value="mandalay">Mandalay</option>
                           <option value="naypyidaw">Naypyidaw</option>
                         </select>
-                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
+                        <ChevronRight className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
                       </div>
                     </div>
 
-                    <div className="relative">
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">
                         Vehicle type
                       </label>
                       <div className="relative group">
-                        <Bike className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#e4002b] transition-colors" />
-                        <select 
-                          className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl appearance-none transition-all outline-none font-medium text-gray-700"
+                        <Bike className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#e4002b] transition-colors pointer-events-none z-10" />
+                        <select
                           value={vehicle}
                           onChange={(e) => setVehicle(e.target.value)}
+                          className="w-full pl-11 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium outline-none transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20 appearance-none cursor-pointer"
                         >
                           <option value="">Choose your vehicle</option>
                           <option value="bicycle">Bicycle</option>
                           <option value="motorbike">Motorbike</option>
                           <option value="car">Car</option>
                         </select>
-                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
+                        <ChevronRight className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
                       </div>
                     </div>
 
                     {showExtendedForm && (
-                      <div className="space-y-4 pt-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                        <div className="grid grid-cols-2 gap-4">
-                          <input 
-                            type="text" 
-                            placeholder="First Name" 
-                            className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                      <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            placeholder="First name"
+                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                           />
-                          <input 
-                            type="text" 
-                            placeholder="Last Name" 
-                            className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          <input
+                            type="text"
+                            placeholder="Last name"
+                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20"
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
                           />
@@ -235,7 +233,7 @@ export default function DeliveryLandingPage() {
                         <input
                           type="email"
                           placeholder="Email"
-                          className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                         />
@@ -243,7 +241,7 @@ export default function DeliveryLandingPage() {
                         <input
                           type="password"
                           placeholder="Password"
-                          className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
@@ -251,20 +249,19 @@ export default function DeliveryLandingPage() {
                         <input
                           type="text"
                           placeholder="License plate"
-                          className="w-full px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20"
                           value={licensePlate}
                           onChange={(e) => setLicensePlate(e.target.value)}
                         />
 
                         <div className="flex gap-2">
-                          <div className="w-24 px-4 py-4 bg-gray-50 border-2 border-transparent rounded-2xl font-medium text-gray-500 flex items-center justify-between">
-                            <span>+95</span>
-                            <ChevronRight className="w-4 h-4 rotate-90" />
+                          <div className="w-20 px-3 py-3.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-500 flex items-center justify-center shrink-0">
+                            +95
                           </div>
-                          <input 
-                            type="tel" 
-                            placeholder="Phone Number" 
-                            className="flex-1 px-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#e4002b] focus:bg-white rounded-2xl outline-none font-medium text-gray-700 transition-all"
+                          <input
+                            type="tel"
+                            placeholder="Phone"
+                            className="flex-1 px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:border-[#e4002b] focus:ring-2 focus:ring-[#e4002b]/20"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                           />
@@ -305,19 +302,18 @@ export default function DeliveryLandingPage() {
 
                   <button
                     type="submit"
-                    className="block w-full bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white py-5 rounded-2xl font-bold text-center hover:shadow-xl hover:shadow-orange-100 active:scale-[0.98] transform transition-all"
+                    className="w-full bg-gray-900 text-white py-4 rounded-xl font-semibold text-center hover:bg-gray-800 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                     disabled={loading}
                   >
-                    {loading ? 'Submitting...' : 'Submit Application'}
+                    {loading ? "Submitting…" : "Submit application"}
                   </button>
 
                   {message && (
-                    <p className="text-center text-sm mt-2 text-gray-700">{message}</p>
+                    <p className="text-center text-sm text-gray-600 mt-2">{message}</p>
                   )}
 
-                  <p className="text-center text-[10px] text-gray-400 leading-relaxed px-4">
-                    By continuing, you agree to our Terms of Service and Privacy Policy. 
-                    Must be 18+ years old.
+                  <p className="text-center text-xs text-gray-400 leading-relaxed">
+                    By continuing, you agree to our Terms of Service and Privacy Policy. Must be 18+.
                   </p>
                 </form>
               </div>

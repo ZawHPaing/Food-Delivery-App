@@ -52,6 +52,7 @@ class RiderProfileResponse(BaseModel):
     phone: Optional[str]
     rider: Optional[dict]
     deliveries: List[dict]
+    cash_collected_cents: int = 0  # COD cash collected by rider (delivered orders)
 
 class UpdateStatusResponse(BaseModel):
     success: bool

@@ -11,8 +11,10 @@ class AuthService:
         Authenticate a user and return token data
         If expected_user_type is provided, verify the user has that type
         """
-        user = UserRepository.find_user_by_email(email)
-        
+        try:
+            user = UserRepository.find_user_by_email(email)
+        except Exception:
+            user = None
         if not user:
             return None
         
@@ -44,8 +46,11 @@ class AuthService:
     def create_user_account(signup_data: dict) -> Optional[dict]:
         """Create a new user account (any user type)"""
         
-        # Check if user already exists
-        existing_user = UserRepository.find_user_by_email(signup_data["email"])
+        # Check if user already exists (catch 0-rows so customer register works)
+        try:
+            existing_user = UserRepository.find_user_by_email(signup_data["email"])
+        except Exception:
+            existing_user = None
         if existing_user:
             return None
         
@@ -85,10 +90,10 @@ class AuthService:
             "user_id": user["id"],
             "user_type": user["user_type"]
         })
-        
+        user_safe = {k: v for k, v in user.items() if k != "password_hash"}
         return {
             "message": f"{signup_data['user_type'].capitalize()} signup successful!",
-            "user": user,
+            "user": user_safe,
             "access_token": token
         }
 

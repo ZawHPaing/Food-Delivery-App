@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { API_BASE } from "@/lib/api";
+// Same base as delivery login/register (AuthProvider, SignupOverlay): hardcoded so auth works without env
+const AUTH_API_BASE = "http://localhost:8000";
 
 export type CustomerUser = {
   user_id: number;
@@ -75,7 +76,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     () => ({
       ...state,
       login: async (email: string, password: string) => {
-        const res = await fetch(`${API_BASE}/auth/user/login`, {
+        const res = await fetch(`${AUTH_API_BASE}/auth/user/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -98,33 +99,49 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
         persistState(user, token);
       },
       register: async (data) => {
-        const res = await fetch(`${API_BASE}/auth/user/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            first_name: data.first_name,
-            last_name: data.last_name,
-            email: data.email,
-            phone: data.phone,
-            password: data.password,
-            user_type: data.user_type || "customer",
-          }),
-        });
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok)
+        let res: Response;
+        try {
+          res = await fetch(`${AUTH_API_BASE}/auth/user/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              first_name: data.first_name,
+              last_name: data.last_name,
+              email: data.email,
+              phone: data.phone,
+              password: data.password,
+              user_type: data.user_type || "customer",
+            }),
+          });
+        } catch (err) {
           throw new Error(
-            typeof result.detail === "string"
-              ? result.detail
-              : result.detail?.message || "Registration failed"
+            err instanceof Error ? err.message : "Cannot reach server. Is the backend running?"
           );
+        }
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail = result.detail;
+          const msg =
+            typeof detail === "string"
+              ? detail
+              : Array.isArray(detail) && detail[0]?.msg
+                ? String(detail[0].msg)
+                : detail?.message
+                  ? String(detail.message)
+                  : "Registration failed";
+          throw new Error(msg);
+        }
         const token = result.access_token;
         const u = result.user;
+        if (!token || !u) {
+          throw new Error("Invalid response from server");
+        }
         const user: CustomerUser = {
-          user_id: u?.id ?? result.user_id,
-          email: u?.email ?? data.email,
-          user_type: u?.user_type ?? "customer",
-          first_name: u?.first_name ?? data.first_name,
-          last_name: u?.last_name ?? data.last_name,
+          user_id: u.id ?? result.user_id,
+          email: u.email ?? data.email,
+          user_type: u.user_type ?? "customer",
+          first_name: u.first_name ?? data.first_name,
+          last_name: u.last_name ?? data.last_name,
         };
         setState({ isLoggedIn: true, user, token });
         persistState(user, token);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import SearchBar from "@/components/ui/SearchBar";
 import CategoryFilter from "@/components/ui/CategoryFilter";
@@ -9,44 +9,19 @@ import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import EventBannerSlider from "@/components/ui/EventBannerSlider";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
 import { restaurants as dbRestaurants, menuItemsByRestaurant } from "@/data/restaurants";
+import { getRestaurantsFromApi } from "@/lib/discoveryApi";
 
-// Transform database restaurants to UI format
-const transformRestaurant = (r: typeof dbRestaurants[0], isPromoted = false) => ({
+const transformRestaurant = (r: { id: number; name: string; cuisine_type?: string; average_rating?: number; deliveryTime?: string; deliveryFee?: string; distance?: string; image?: string }, isPromoted = false) => ({
   id: String(r.id),
   name: r.name,
-  cuisine: r.cuisine_type,
-  rating: r.average_rating,
-  deliveryTime: r.deliveryTime || "25-35 min",
-  deliveryFee: r.deliveryFee || "Free",
+  cuisine: r.cuisine_type ?? "",
+  rating: r.average_rating ?? 0,
+  deliveryTime: r.deliveryTime ?? "25-35 min",
+  deliveryFee: r.deliveryFee ?? "Free",
   distance: r.distance,
   image: r.image,
   isPromoted,
 });
-
-// Featured restaurants from database
-const featuredRestaurants = dbRestaurants.slice(0, 4).map((r, i) => transformRestaurant(r, i < 3));
-
-// Popular Foods from menu items database
-const popularFoods = Object.entries(menuItemsByRestaurant)
-  .flatMap(([restaurantId, items]) => 
-    items
-      .filter(item => item.isPopular && item.image)
-      .map((item, index) => ({
-        id: `f${item.id}`,
-        name: item.name,
-        description: item.description,
-        rating: 4.5 + (index % 5) * 0.1, // Static rating based on index
-        price: `$${(item.price_cents / 100).toFixed(2)}`,
-        image: item.image as string,
-        link: `/consumer_module/restaurant/${restaurantId}`,
-      }))
-  )
-  .slice(0, 6);
-
-// Popular restaurants from database (sorted by rating)
-const popularRestaurants = [...dbRestaurants]
-  .sort((a, b) => b.total_reviews - a.total_reviews)
-  .map(r => transformRestaurant(r));
 
 // Offers/Promotions data
 const offers = [
@@ -86,14 +61,22 @@ const offers = [
   },
 ];
 
-// New Restaurants from database (highest rated)
-const newRestaurants = [...dbRestaurants]
-  .sort((a, b) => b.average_rating - a.average_rating)
-  .slice(0, 5)
-  .map(r => ({
-    ...transformRestaurant(r),
-    badge: "NEW",
-  }));
+// Popular Foods from menu items (mock fallback)
+const popularFoodsFromMock = Object.entries(menuItemsByRestaurant)
+  .flatMap(([restaurantId, items]) =>
+    items
+      .filter((item) => item.isPopular && item.image)
+      .map((item, index) => ({
+        id: `f${item.id}`,
+        name: item.name,
+        description: item.description,
+        rating: 4.5 + (index % 5) * 0.1,
+        price: `$${(item.price_cents / 100).toFixed(2)}`,
+        image: item.image as string,
+        link: `/consumer_module/restaurant/${restaurantId}`,
+      }))
+  )
+  .slice(0, 6);
 
 // Vouchers data
 const vouchers = [
@@ -126,21 +109,8 @@ const vouchers = [
   },
 ];
 
-// Super Restaurants (Nearest) - sorted by distance
-const superRestaurants = [...dbRestaurants]
-  .sort((a, b) => {
-    const distA = parseFloat(a.distance?.replace(' km', '') || '999');
-    const distB = parseFloat(b.distance?.replace(' km', '') || '999');
-    return distA - distB;
-  })
-  .slice(0, 5)
-  .map(r => ({
-    ...transformRestaurant(r),
-    badge: "NEAR",
-    image: r.image,
-  }));
-
 export default function Home() {
+  const [restaurantsList, setRestaurantsList] = useState(dbRestaurants);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [activeFilters, setActiveFilters] = useState<FilterOptions>({
@@ -178,6 +148,50 @@ export default function Home() {
   const handleCloseOverlay = () => {
     setIsSearchFocused(false);
   };
+
+  useEffect(() => {
+    getRestaurantsFromApi().then((apiList) => {
+      if (apiList.length > 0) {
+        setRestaurantsList(
+          apiList.map((r) => ({
+            ...r,
+            id: r.id,
+            name: r.name,
+            description: r.description ?? "",
+            latitude: 0,
+            longitude: 0,
+            city: r.city ?? "",
+            cuisine_type: r.cuisine_type ?? "",
+            average_rating: r.average_rating ?? 0,
+            total_reviews: r.total_reviews ?? 0,
+            created_at: "",
+            deliveryTime: "25-35 min",
+            deliveryFee: "Free",
+            distance: "",
+            isOpen: true,
+          }))
+        );
+      }
+    });
+  }, []);
+
+  const featuredRestaurants = restaurantsList.slice(0, 4).map((r, i) => transformRestaurant(r, i < 3));
+  const popularRestaurants = [...restaurantsList]
+    .sort((a, b) => (b.total_reviews ?? 0) - (a.total_reviews ?? 0))
+    .map((r) => transformRestaurant(r));
+  const newRestaurants = [...restaurantsList]
+    .sort((a, b) => (b.average_rating ?? 0) - (a.average_rating ?? 0))
+    .slice(0, 5)
+    .map((r) => ({ ...transformRestaurant(r), badge: "NEW" }));
+  const superRestaurants = [...restaurantsList]
+    .sort((a, b) => {
+      const distA = parseFloat(String(a.distance ?? "").replace(" km", "") || "999");
+      const distB = parseFloat(String(b.distance ?? "").replace(" km", "") || "999");
+      return distA - distB;
+    })
+    .slice(0, 5)
+    .map((r) => ({ ...transformRestaurant(r), badge: "NEAR", image: r.image }));
+  const popularFoods = popularFoodsFromMock;
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">

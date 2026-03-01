@@ -1,16 +1,15 @@
 "use client";
 
-import { useDeliveryState } from '@/hooks/useDeliveryState';
+import { useDeliveryContext } from '@/app/_providers/DeliveryProvider';
 import { StatusToggle } from '@/components/delivery/StatusToggle';
 import { IncomingRequest } from '@/components/delivery/IncomingRequest';
 import { ActiveOrderCard } from '@/components/delivery/ActiveOrderCard';
 import { MapPlaceholder } from '@/components/delivery/MapPlaceholder';
-import { Package, Bike, Map as MapIcon, ChevronUp, GripHorizontal } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Package, Bike, GripHorizontal } from 'lucide-react';
 import { DeliveryNavbar } from '@/components/delivery/DeliveryNavbar';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DriverStatus } from '@/types/delivery';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import LoginOverlay from '@/components/ui/LoginOverlay';
 import SignupOverlay from '@/components/ui/SignupOverlay';
 import { useAuth } from '@/app/_providers/AuthProvider';
@@ -28,68 +27,16 @@ export default function Dashboard() {
     pickupOrder,
     completeOrder,
     sendMessage,
-  } = useDeliveryState();
+  } = useDeliveryContext();
 
-  const [showMap, setShowMap] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
-  const { isLoggedIn, logout, user } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
-  // Map backend status strings ('available'|'unavailable'|'busy') to DriverStatus
-  const backendToDriverStatus = (s: string | undefined): DriverStatus =>
-    s === 'available' ? 'online' : s === 'busy' ? 'busy' : 'offline';
-  const driverStatusToBackend = (s: DriverStatus) =>
-    s === 'online' ? 'available' : s === 'busy' ? 'busy' : 'unavailable';
-
-  const initialStatus = backendToDriverStatus((user as any)?.rider?.status);
-  const [availability, setAvailability] = useState<DriverStatus>(initialStatus ?? 'offline');
-
-  // Toggle status and persist to backend `delivery/status` endpoint
-  async function handleToggleStatus() {
-    const nextDriverStatus: DriverStatus = availability === 'online' ? 'offline' : 'online';
-    const nextStatusBackend = driverStatusToBackend(nextDriverStatus);
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-
-    try {
-      const riderId = (user as any)?.rider?.id;
-      if (!riderId) {
-        console.error('No rider id available to update status');
-        return;
-      }
-
-      const url = `http://localhost:8000/delivery/status`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          rider_id: riderId,
-          status: nextStatusBackend,
-        }),
-      });
-
-      if (!res.ok) {
-        const bodyText = await res.text().catch(() => '');
-        const msg = `Failed to update status: ${bodyText || res.statusText || `status ${res.status}`}`;
-        console.error(msg);
-        return;
-      }
-
-      const data = await res.json();
-      if (data?.success && data?.status) {
-        setAvailability(backendToDriverStatus(data.status));
-        try {
-          toggleOnline();
-        } catch (err) {
-          // ignore
-        }
-      }
-    } catch (err) {
-      console.error(`Error updating status: ${String(err)}`);
-    }
-  }
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-slate-50">
@@ -102,7 +49,7 @@ export default function Dashboard() {
       <main className="flex-1 overflow-hidden flex flex-col max-w-2xl mx-auto w-full relative">
         <div className="p-4 space-y-4">
           {/* Status Toggle */}
-          <StatusToggle status={availability} onToggle={handleToggleStatus} />
+          <StatusToggle status={status} onToggle={toggleOnline} />
 
           {/* Map View */}
           <div className="animate-enter" style={{ animationDelay: '0.1s' }}>
@@ -178,8 +125,15 @@ export default function Dashboard() {
               </section>
             )}
 
-            {/* Empty State */}
-            {!activeOrder && incomingRequests.length === 0 && status === 'online' && (
+            {/* Empty / Unavailable: same className on server and client to avoid hydration mismatch */}
+            {!mounted ? (
+              <section className="py-12 text-center">
+                <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto mb-6 flex items-center justify-center">
+                  <Bike className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              </section>
+            ) : !activeOrder && incomingRequests.length === 0 && status === 'online' ? (
               <section className="py-12 text-center">
                 <div className="relative w-24 h-24 mx-auto mb-6">
                   <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping opacity-20" />
@@ -194,10 +148,7 @@ export default function Dashboard() {
                   New requests will appear here as soon as they are available.
                 </p>
               </section>
-            )}
-
-            {/* Unavailable State */}
-            {status === 'offline' && (
+            ) : status === 'offline' ? (
               <section className="py-12 text-center opacity-60">
                 <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto mb-6 flex items-center justify-center">
                   <Bike className="w-8 h-8 text-muted-foreground" />
@@ -209,7 +160,7 @@ export default function Dashboard() {
                   Turn on your availability to start working.
                 </p>
               </section>
-            )}
+            ) : null}
           </div>
         </motion.div>
       </main>

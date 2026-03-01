@@ -3,7 +3,7 @@
 import { useDeliveryState } from '@/hooks/useDeliveryState';
 import { StatusToggle } from '@/components/delivery/StatusToggle';
 import { VehicleSelector } from '@/components/delivery/VehicleSelector';
-import { User, Star, DollarSign, Package, Truck } from 'lucide-react';
+import { User, Star, DollarSign, Package, Truck, Banknote } from 'lucide-react';
 import { DriverStatus, VehicleType } from '@/types/delivery';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import LoginOverlay from '@/components/ui/LoginOverlay';
@@ -17,7 +17,7 @@ export default function ProfilePage() {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
 
-  // Safely read deliveries from user
+  // Safely read deliveries and COD cash from user
   const deliveries = (user as any)?.deliveries as Array<{ delivery_fee_cents?: number }> ?? [];
   const deliveriesCount = deliveries.length;
   const earningsCents = deliveries.reduce(
@@ -25,6 +25,8 @@ export default function ProfilePage() {
     0
   );
   const earningsDisplay = `${earningsCents.toLocaleString()} MMK`;
+  const cashCollectedCents = (user as any)?.cash_collected_cents ?? 0;
+  const cashCollectedDisplay = `${cashCollectedCents.toLocaleString()} MMK`;
   // Map backend status strings ('available'|'unavailable'|'busy') to DriverStatus
   const backendToDriverStatus = (s: string | undefined): DriverStatus =>
     s === 'available' ? 'online' : s === 'busy' ? 'busy' : 'offline';
@@ -33,52 +35,59 @@ export default function ProfilePage() {
 
   const initialStatus = backendToDriverStatus((user as any)?.rider?.status);
   const [availability, setAvailability] = useState<DriverStatus>(initialStatus ?? 'offline');
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
-  // Toggle status and persist to backend `delivery/profile` endpoint
+  // Toggle status and persist to backend
   async function handleToggleStatus() {
+    setStatusError(null);
     const nextDriverStatus: DriverStatus = availability === 'online' ? 'offline' : 'online';
     const nextStatusBackend = driverStatusToBackend(nextDriverStatus);
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 
-    try {
-      const riderId = (user as any)?.rider?.id;
-      if (!riderId) {
-        console.error('No rider id available to update status');
-        return;
-      }
+    const riderId = (user as any)?.rider?.id;
+    if (!riderId) {
+      setStatusError('Profile not loaded. Try logging in again.');
+      return;
+    }
 
-      const url = `http://localhost:8000/delivery/status`;
-      const res = await fetch(url, {
+    setStatusLoading(true);
+    try {
+      const res = await fetch('http://localhost:8000/delivery/status', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          rider_id: riderId,
-          status: nextStatusBackend,
-        }),
+        body: JSON.stringify({ rider_id: riderId, status: nextStatusBackend }),
       });
 
+      const bodyText = await res.text().catch(() => '');
       if (!res.ok) {
-        const bodyText = await res.text().catch(() => '');
-        const msg = `Failed to update status: ${bodyText || res.statusText || `status ${res.status}`}`;
-        console.error(msg);
+        let msg = 'Failed to update status.';
+        try {
+          const j = JSON.parse(bodyText);
+          if (j?.detail) msg = typeof j.detail === 'string' ? j.detail : msg;
+        } catch {
+          if (bodyText) msg = bodyText.slice(0, 120);
+        }
+        setStatusError(msg);
         return;
       }
 
-      const data = await res.json();
-      // backend returns { success: true, status: "available" }
+      const data = bodyText ? JSON.parse(bodyText) : {};
       if (data?.success && data?.status) {
         setAvailability(backendToDriverStatus(data.status));
         try {
           toggleOnline();
-        } catch (err) {
+        } catch {
           // ignore
         }
       }
     } catch (err) {
-      console.error(`Error updating status: ${String(err)}`);
+      setStatusError(String(err));
+    } finally {
+      setStatusLoading(false);
     }
   }
     const licensePlate = (user as any)?.rider?.license_plate ?? 'N/A';
@@ -86,6 +95,7 @@ export default function ProfilePage() {
       { icon: Package, label: 'Deliveries', value: String(deliveriesCount) },
       { icon: Truck, label: 'Vehicle Plate', value: licensePlate },
       { icon: DollarSign, label: 'Earnings', value: earningsDisplay },
+      { icon: Banknote, label: 'Cash on delivery', value: cashCollectedDisplay },
     ];
 
   // Map registered vehicle from backend rider profile to UI vehicle type
@@ -117,21 +127,19 @@ export default function ProfilePage() {
         onSignupClick={() => setShowSignup(true)}
       />
       {!isLoggedIn ? (
-        <main className="max-w-2xl mx-auto px-4 py-16 text-center space-y-6">
-          <h1 className="text-3xl font-bold">You are logged out</h1>
-          <p className="text-muted-foreground">
-            Please log in or create an account to access your profile.
-          </p>
-          <div className="flex items-center justify-center gap-3">
+        <main className="max-w-md mx-auto px-4 py-20 text-center">
+          <h1 className="text-2xl font-bold text-gray-900">You’re logged out</h1>
+          <p className="text-gray-500 mt-2">Log in or sign up to access your driver profile.</p>
+          <div className="flex items-center justify-center gap-3 mt-8">
             <button
               onClick={() => setShowLogin(true)}
-              className="px-5 py-2 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50"
+              className="px-5 py-2.5 rounded-xl font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Log in
             </button>
             <button
               onClick={() => setShowSignup(true)}
-              className="px-5 py-2 rounded-xl font-semibold text-white bg-gradient-to-r from-[#e4002b] to-[#ff6600] border-none"
+              className="px-5 py-2.5 rounded-xl font-semibold text-white bg-gray-900 hover:bg-gray-800 transition-colors"
             >
               Sign up
             </button>
@@ -140,54 +148,59 @@ export default function ProfilePage() {
       ) : (
         <>
           {/* Header */}
-          <header className="relative">
-            <div className="h-24 gradient-primary" />
-            <div className="max-w-2xl mx-auto px-4">
-              <div className="relative -mt-16">
-                <div className="flex items-end gap-4">
-                  <div className="w-28 h-28 rounded-2xl bg-card shadow-card border-4 border-background flex items-center justify-center">
-                    <User className="w-12 h-12 text-muted-foreground" />
-                  </div>
-                  <div className="pb-6">
-                    <h1 className="text-4xl font-bold text-white">{displayName || 'Alex Driver'}</h1>
-                    <p className="text-lg text-muted-foreground">{displayEmail || 'driver_alex_123'}</p>
-                  </div>
+          <header className="bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+            <div className="max-w-2xl mx-auto px-4 pt-8 pb-10">
+              <div className="flex items-center gap-5">
+                <div className="w-20 h-20 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+                  <User className="w-10 h-10 text-white/90" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-2xl font-bold truncate">{displayName || 'Driver'}</h1>
+                  <p className="text-gray-300 text-sm truncate mt-0.5">{displayEmail || '—'}</p>
                 </div>
               </div>
             </div>
           </header>
 
-          {/* Content */}
-          <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+          <main className="max-w-2xl mx-auto px-4 -mt-2 pb-24 space-y-5">
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {stats.map(({ icon: Icon, label, value }) => (
-                <div key={label} className="p-4 rounded-xl bg-card shadow-card text-center">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-2">
-                    <Icon className="w-5 h-5 text-primary" />
+                <div
+                  key={label}
+                  className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm text-center"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2">
+                    <Icon className="w-5 h-5 text-gray-600" />
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{value}</p>
-                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className="text-lg font-bold text-gray-900 truncate" title={value}>{value}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
 
-            {/* Status section */}
+            {/* Status */}
             <div>
-              <h2 className="text-lg font-semibold text-foreground mb-3">Status Management</h2>
-              <StatusToggle status={availability} onToggle={handleToggleStatus} />
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">Status</h2>
+              <StatusToggle
+                status={availability}
+                onToggle={handleToggleStatus}
+                disabled={statusLoading}
+              />
+              {statusError && (
+                <p className="mt-2 text-sm text-red-600">{statusError}</p>
+              )}
             </div>
 
-            {/* Vehicle settings */}
+            {/* Vehicle */}
             <div>
-              <h2 className="text-lg font-semibold text-foreground mb-3">Vehicle Settings</h2>
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">Vehicle</h2>
               <VehicleSelector
                 selected={displayVehicle}
                 onChange={handleVehicleChange}
                 allowedTypes={allowedVehicleTypes}
               />
             </div>
-
           </main>
         </>
       )}

@@ -35,6 +35,65 @@ class DeliveryRepository:
         return response.data[0] if response.data else None
     
     @staticmethod
+    def create_delivery(order_id: int, rider_id: int, status: str = "assigned") -> Optional[Dict]:
+        """Create a delivery row when a rider accepts. Links order to rider."""
+        try:
+            response = supabase.table("deliveries").insert({
+                "order_id": order_id,
+                "rider_id": rider_id,
+                "status": status,
+            }).execute()
+            data = getattr(response, "data", None)
+            if data and isinstance(data, list) and data:
+                return data[0]
+            return data[0] if data else None
+        except Exception:
+            return None
+
+    @staticmethod
+    def get_delivery_by_order_id(order_id: int) -> Optional[Dict]:
+        try:
+            response = supabase.table("deliveries").select("*").eq("order_id", order_id).maybe_single().execute()
+            data = getattr(response, "data", None)
+            if data is None:
+                return None
+            return data[0] if isinstance(data, list) and data else data
+        except Exception:
+            return None
+
+    @staticmethod
+    def get_delivery_by_id(delivery_id: int) -> Optional[Dict]:
+        try:
+            response = supabase.table("deliveries").select("*").eq("id", delivery_id).maybe_single().execute()
+            data = getattr(response, "data", None)
+            if data is None:
+                return None
+            return data[0] if isinstance(data, list) and data else data
+        except Exception:
+            return None
+
+    @staticmethod
+    def update_delivery_status(
+        delivery_id: int,
+        rider_id: int,
+        status: str,
+        *,
+        picked_up_at=None,
+        delivered_at=None,
+    ) -> bool:
+        """Update delivery and order status (picked_up / delivered). Returns True if updated."""
+        try:
+            payload = {"status": status}
+            if picked_up_at is not None:
+                payload["picked_up_at"] = picked_up_at
+            if delivered_at is not None:
+                payload["delivered_at"] = delivered_at
+            supabase.table("deliveries").update(payload).eq("id", delivery_id).eq("rider_id", rider_id).execute()
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
     def get_delivery_history(rider_id: int) -> List[Dict]:
         """Get all completed deliveries for a rider"""
         response = supabase.table("deliveries") \
@@ -55,10 +114,10 @@ class DeliveryRepository:
         if not order_ids:
             return {}
         response = supabase.table("orders") \
-            .select("id, user_id, restaurant_id, delivery_fee_cents") \
+            .select("id, user_id, restaurant_id, delivery_fee_cents, total_cents") \
             .in_("id", order_ids) \
             .execute()
-        return {o["id"]: o for o in response.data}
+        return {o["id"]: o for o in (response.data or [])}
     
     @staticmethod
     def get_restaurants_by_ids(restaurant_ids: List[int]) -> Dict[int, str]:
@@ -119,9 +178,32 @@ class DeliveryRepository:
     
     @staticmethod
     def update_rider_status(rider_id: int, status: str) -> bool:
-        """Update rider availability status"""
-        response = supabase.table("riders") \
-            .update({"status": status}) \
-            .eq("id", rider_id) \
-            .execute()
-        return response.count > 0
+        """Update rider availability status. Avoids response.count > 0 when count is None."""
+        try:
+            response = supabase.table("riders") \
+                .update({"status": status}) \
+                .eq("id", rider_id) \
+                .execute()
+        except Exception:
+            return False
+        count = getattr(response, "count", None)
+        if count is not None and isinstance(count, (int, float)):
+            return count > 0
+        data = getattr(response, "data", None)
+        if data is not None and isinstance(data, list):
+            return len(data) > 0
+        return True
+
+    @staticmethod
+    def update_rider_location(rider_id: int, latitude: float, longitude: float) -> bool:
+        """Update rider GPS location for dispatch."""
+        from datetime import datetime
+        try:
+            supabase.table("riders").update({
+                "current_latitude": latitude,
+                "current_longitude": longitude,
+                "last_location_update": datetime.utcnow().isoformat(),
+            }).eq("id", rider_id).execute()
+            return True
+        except Exception:
+            return False

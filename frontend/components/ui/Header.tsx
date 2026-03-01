@@ -212,12 +212,16 @@ export default function Header() {
                 {showProfileDropdown && (
                   <div className="absolute top-full mt-3 right-0 bg-white rounded-2xl shadow-2xl border border-gray-200 py-2 min-w-[280px] z-50 overflow-hidden">
                     <div className="py-2">
-                      <button className="w-full px-4 py-3 flex items-center space-x-3 text-gray-800 hover:bg-gray-50 transition-colors">
+                      <Link
+                        href="/consumer_module/orders"
+                        onClick={() => setShowProfileDropdown(false)}
+                        className="w-full px-4 py-3 flex items-center space-x-3 text-gray-800 hover:bg-gray-50 transition-colors"
+                      >
                         <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m-9 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <span className="font-medium">Orders & reordering</span>
-                      </button>
+                      </Link>
 
                       <Link
                         href="/consumer_module/profile"

@@ -1,0 +1,8 @@
+{
+  "first_name": "Test",
+  "last_name": "Customer",
+  "email": "testcustomer@example.com",
+  "phone": "+951234567",
+  "password": "test123",
+  "user_type": "customer"
+}

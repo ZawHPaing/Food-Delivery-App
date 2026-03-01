@@ -23,7 +23,8 @@ export type User = {
   phone?: string;
   address?: string;
   rider?: Rider;
-  deliveries?: Array<{ delivery_fee_cents?: number }>; 
+  deliveries?: Array<{ delivery_fee_cents?: number }>;
+  cash_collected_cents?: number;  // COD cash collected by rider
 };
 
 
@@ -110,7 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!prev.user) return prev;
           const merged: AuthState = {
             ...prev,
-            user: { ...prev.user, ...profileData, id: prev.user.id, username: prev.user.username },
+            user: {
+              ...prev.user,
+              ...profileData,
+              id: profileData.id != null ? String(profileData.id) : prev.user.id,
+              username: prev.user.username,
+            },
           };
           persistState(merged);
           return merged;

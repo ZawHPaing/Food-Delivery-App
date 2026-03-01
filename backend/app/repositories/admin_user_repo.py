@@ -52,9 +52,14 @@ class AdminUserRepository:
                 .eq("id", user_id) \
                 .execute()
             
-            # Check if any data was returned (successful deletion)
-            # Some Supabase versions return data, others return an empty array
-            return response.data is not None and len(response.data) > 0
+            # Check for successful deletion in multiple ways
+            # Some Supabase versions return data, others return count
+            count = getattr(response, "count", None)
+            if count is not None:
+                return count > 0
+            
+            data = getattr(response, "data", None)
+            return bool(data and len(data) > 0)
             
         except Exception as e:
             print(f"Error deleting user {user_id}: {e}")
