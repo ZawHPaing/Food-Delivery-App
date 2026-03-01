@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { MenuItem, Order, OrderItem, Delivery, Rider, TrackingPoint } from '@/types/restaurant';
+import { MenuItem, Order, OrderItem, Delivery, Rider, TrackingPoint } from '@/types/admin_restaurant';
 
 // Mock Data
 const mockMenuItems: MenuItem[] = [

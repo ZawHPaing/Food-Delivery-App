@@ -1,9 +1,13 @@
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional, Dict
 from .config import SECRET_KEY, ALGORITHM
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
 def _truncate_password_to_72(password: str) -> str:
     if password is None:
@@ -37,3 +41,40 @@ def decode_access_token(token: str):
         return payload
     except Exception:
         return None
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Dependency to get the current user from JWT token
+    """
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return payload
+
+async def get_current_active_user(current_user: dict = Depends(get_current_user)):
+    """
+    Dependency to get current active user (you can add more checks here)
+    """
+    # You could add additional checks here like:
+    # - Check if user exists in database
+    # - Check if user is active
+    # - Check if email is verified, etc.
+    return current_user
+
+def optional_get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
+    """
+    Optional authentication - returns None if no valid token
+    """
+    if credentials:
+        token = credentials.credentials
+        payload = decode_access_token(token)
+        if payload:
+            return payload
+    return None

@@ -45,9 +45,17 @@ class AdminUserRepository:
 
     @staticmethod
     def delete_user(user_id: int) -> bool:
-        response = supabase.table("users") \
-            .delete() \
-            .eq("id", user_id) \
-            .execute()
-
-        return response.count > 0
+        """Delete a user and return True if successful"""
+        try:
+            response = supabase.table("users") \
+                .delete() \
+                .eq("id", user_id) \
+                .execute()
+            
+            # Check if any data was returned (successful deletion)
+            # Some Supabase versions return data, others return an empty array
+            return response.data is not None and len(response.data) > 0
+            
+        except Exception as e:
+            print(f"Error deleting user {user_id}: {e}")
+            return False

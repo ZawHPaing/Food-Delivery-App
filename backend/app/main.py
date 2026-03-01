@@ -4,10 +4,19 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes
+from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes, admin_menu_routes, admin_restaurant_routes
+import os
 
-# Allowed frontend origins for CORS
-CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+# Allowed frontend origins for CORS - Add your server IP
+CORS_ORIGINS = [
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
+    "http://192.168.1.100:3000",  # Replace with your actual server IP
+    "http://your-domain.com",      # Add your domain if you have one
+]
+
+# You can also allow all origins for development (not recommended for production)
+# CORS_ORIGINS = ["*"]
 
 app = FastAPI(title="Food Delivery Backend")
 
@@ -25,7 +34,7 @@ app.add_middleware(
 def _cors_headers(origin) -> dict:
     if origin and origin in CORS_ORIGINS:
         return {"Access-Control-Allow-Origin": origin}
-    return {"Access-Control-Allow-Origin": CORS_ORIGINS[0]}
+    return {"Access-Control-Allow-Origin": CORS_ORIGINS[0] if CORS_ORIGINS else "*"}
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -74,7 +83,23 @@ app.include_router(delivery_routes.router)   # /delivery/*
 app.include_router(auth_routes.router)       # /auth/*
 app.include_router(admin_users_routes.router)
 app.include_router(customer_routes.router)   # /customer/*
+app.include_router(admin_menu_routes.router)  # /menu/*
+app.include_router(admin_restaurant_routes.router)
 
 @app.get("/")
 def root():
     return {"status": "Backend running"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "cors_origins": CORS_ORIGINS}
+
+# After all routers are included
+@app.on_event("startup")
+async def startup_event():
+    print("\n" + "=" * 80)
+    print("ALL REGISTERED ROUTES:")
+    print("=" * 80)
+    for route in app.routes:
+        print(f"Path: {route.path}, Methods: {route.methods}, Name: {route.name}")
+    print("=" * 80 + "\n")

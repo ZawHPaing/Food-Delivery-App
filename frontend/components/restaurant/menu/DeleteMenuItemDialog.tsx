@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MenuItem } from '@/types/restaurant';
+import { MenuItem } from '@/types/admin_restaurant';
 
 interface DeleteMenuItemDialogProps {
   open: boolean;

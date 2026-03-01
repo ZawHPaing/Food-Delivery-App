@@ -15,10 +15,16 @@ type User = {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/admin/users/");
+      const url = filter 
+        ? `http://localhost:8000/admin/users/?role=${filter}`
+        : "http://localhost:8000/admin/users/";
+      
+      const res = await fetch(url);
       const data = await res.json();
       if (!res.ok) {
         console.error(data);
@@ -29,6 +35,8 @@ export default function AdminUsersPage() {
     } catch (err) {
       console.error("Fetch error:", err);
       setUsers([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,100 +45,138 @@ export default function AdminUsersPage() {
   }, [filter]);
 
   const deleteUser = async (id: number) => {
-    await fetch(`http://localhost:8000/admin/users/${id}`, {
-      method: "DELETE",
-    });
-    fetchUsers();
+    if (!confirm("Are you sure you want to delete this user?")) return;
+    
+    try {
+      const res = await fetch(`http://localhost:8000/admin/users/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchUsers();
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
   };
 
   const changeRole = async (id: number, role: string) => {
-    await fetch(`http://localhost:8000/admin/users/${id}/role`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_type: role }),
-    });
-    fetchUsers();
+    try {
+      const res = await fetch(`http://localhost:8000/admin/users/${id}/role`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_type: role }),
+      });
+      if (res.ok) {
+        fetchUsers();
+      }
+    } catch (err) {
+      console.error("Role change error:", err);
+    }
+  };
+
+  const getRoleBadgeClass = (role: string) => {
+    switch(role) {
+      case 'admin':
+        return 'bg-destructive/10 text-destructive';
+      case 'owner':
+        return 'bg-primary/10 text-primary';
+      case 'rider':
+        return 'bg-success/10 text-success';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
   };
 
   return (
-    <div className="min-h-screen flex bg-[#f8f9fa] text-gray-800">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-lg p-6 flex flex-col">
-        <h2 className="text-xl font-bold mb-6">Admin Panel</h2>
-        <nav className="flex flex-col space-y-3">
-          <a href="#" className="hover:text-primary-foreground font-medium">Dashboard</a>
-          <a href="#" className="hover:text-primary-foreground font-medium">Users</a>
-          <a href="#" className="hover:text-primary-foreground font-medium">Restaurants</a>
-          <a href="#" className="hover:text-primary-foreground font-medium">Orders</a>
-          <a href="#" className="hover:text-primary-foreground font-medium">Vouchers</a>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-8">
-        <h1 className="text-2xl font-bold mb-6">User Management</h1>
-
-        {/* Filter */}
-        <div className="mb-4 flex items-center space-x-4">
-          <label className="font-medium">Filter by role:</label>
-          <select
-            className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-foreground"
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="customer">Customer</option>
-            <option value="rider">Rider</option>
-            <option value="owner">Owner</option>
-            <option value="admin">Admin</option>
-          </select>
+    <div className="animate-fade-in">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
+          User Management
+        </h1>
+        <div className="glass px-4 py-2 rounded-xl text-sm">
+          Total Users: <span className="font-bold text-primary">{users.length}</span>
         </div>
+      </div>
 
-        {/* Users Table */}
-        <div className="overflow-x-auto bg-white rounded shadow-md">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      {/* Filter */}
+      <div className="mb-6 flex items-center space-x-4 glass-card p-4 rounded-xl">
+        <label className="font-medium text-foreground/70">Filter by role:</label>
+        <select
+          className="border border-border rounded-xl px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="">All Users</option>
+          <option value="customer">Customer</option>
+          <option value="rider">Rider</option>
+          <option value="owner">Restaurant Owner</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+
+      {/* Users Table */}
+      <div className="bg-white rounded-2xl shadow-soft overflow-hidden border border-border/30">
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold">ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-border">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">{user.id}</td>
-                  <td className="px-6 py-4">{user.email}</td>
-                  <td className="px-6 py-4">{user.first_name} {user.last_name}</td>
-                  <td className="px-6 py-4 capitalize">{user.user_type}</td>
-                  <td className="px-6 py-4 flex space-x-2">
-                    <button
-                      onClick={() => changeRole(user.id, "admin")}
-                      className="px-3 py-1 bg-primary rounded text-white text-sm hover:bg-primary-foreground transition-colors"
+                <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground/70">{user.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                    {user.first_name} {user.last_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground/70">{user.phone || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(user.user_type)}`}>
+                      {user.user_type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <select
+                      onChange={(e) => changeRole(user.id, e.target.value)}
+                      value={user.user_type}
+                      className="text-sm border border-border rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/50"
                     >
-                      Make Admin
-                    </button>
+                      <option value="customer">Customer</option>
+                      <option value="rider">Rider</option>
+                      <option value="owner">Owner</option>
+                      <option value="admin">Admin</option>
+                    </select>
                     <button
                       onClick={() => deleteUser(user.id)}
-                      className="px-3 py-1 bg-red-500 rounded text-white text-sm hover:bg-red-600 transition-colors"
+                      className="text-destructive hover:text-destructive/80 ml-2 px-3 py-1.5 rounded-xl hover:bg-destructive/10 transition-colors"
                     >
                       Delete
                     </button>
                   </td>
                 </tr>
               ))}
-              {users.length === 0 && (
+              {users.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                     No users found
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-      </main>
+        )}
+      </div>
     </div>
   );
 }

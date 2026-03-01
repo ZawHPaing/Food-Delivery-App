@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useRestaurant } from '@/context/RestaurantContext';
-import { Order } from '@/types/restaurant';
+import { Order } from '@/types/admin_restaurant';
 import { RiderModal } from './RiderModal';
 import { RiderTrackingCard } from './RiderTrackingCard';
 

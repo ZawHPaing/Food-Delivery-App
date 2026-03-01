@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useRestaurant } from '@/context/RestaurantContext';
 import { MenuItemDialog } from '@/components/restaurant/menu/MenuItemDialog';
 import { DeleteMenuItemDialog } from '@/components/restaurant/menu/DeleteMenuItemDialog';
-import { MenuItem } from '@/types/restaurant';
+import { MenuItem } from '@/types/admin_restaurant';
 
 export default function Menu() {
   const { menuItems, updateMenuItemAvailability, addMenuItem, updateMenuItem, deleteMenuItem } = useRestaurant();

@@ -3,7 +3,7 @@ import { MapPin, User, Clock, CheckCircle, Navigation, Phone } from 'lucide-reac
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Order, Delivery, Rider } from '@/types/restaurant';
+import { Order, Delivery, Rider } from '@/types/admin_restaurant';
 import { useRestaurant } from '@/context/RestaurantContext';
 
 interface RiderTrackingCardProps {
