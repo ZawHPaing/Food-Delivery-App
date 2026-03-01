@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCustomerAuth } from "@/app/_providers/CustomerAuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import AuthLayout from "./AuthLayout";
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/consumer_module";
   const { login, isLoggedIn } = useCustomerAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,7 +25,7 @@ export default function LoginForm() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/consumer_module");
+      router.push(redirect.startsWith("/") ? redirect : "/consumer_module");
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -32,8 +34,13 @@ export default function LoginForm() {
     }
   };
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.replace(redirect.startsWith("/") ? redirect : "/consumer_module");
+    }
+  }, [isLoggedIn, redirect, router]);
+
   if (isLoggedIn) {
-    router.replace("/consumer_module");
     return null;
   }
 

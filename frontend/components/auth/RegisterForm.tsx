@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCustomerAuth } from "@/app/_providers/CustomerAuthProvider";
@@ -48,8 +48,13 @@ export default function RegisterForm() {
     }
   };
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.replace("/consumer_module");
+    }
+  }, [isLoggedIn, router]);
+
   if (isLoggedIn) {
-    router.replace("/consumer_module");
     return null;
   }
 

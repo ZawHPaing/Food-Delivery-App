@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends, Header
+import asyncio
+from fastapi import APIRouter, HTTPException, Depends, Header, Query, WebSocket, WebSocketDisconnect
 from typing import Optional
 
 from ..models.customer_models import (
@@ -14,9 +15,12 @@ from ..models.customer_models import (
     NotificationResponse,
     CustomerProfileResponse,
     CustomerProfileUpdate,
+    VoucherValidateResponse,
 )
 from ..services.customer_service import CustomerService
+from ..services.dispatch_service import DispatchService
 from ..core.security import decode_access_token
+from ..core.websocket_manager import manager
 
 router = APIRouter(prefix="/customer", tags=["Customer"])
 
@@ -94,6 +98,19 @@ def delete_address(address_id: int, user_id: int = Depends(get_current_customer_
     return {"message": "Address deleted"}
 
 
+# ----- Vouchers (validate before checkout) -----
+@router.get("/vouchers/validate", response_model=VoucherValidateResponse)
+def validate_voucher(
+    code: str,
+    subtotal_cents: int,
+    restaurant_id: Optional[int] = None,
+    user_id: int = Depends(get_current_customer_id),
+):
+    """Validate a voucher code for the given subtotal and optional restaurant. Returns discount_cents if valid."""
+    result = CustomerService.validate_voucher(code, subtotal_cents, restaurant_id)
+    return result
+
+
 # ----- Payments (read-only; payments are created when placing an order) -----
 @router.get("/payments", response_model=list[PaymentResponse])
 def list_payments(user_id: int = Depends(get_current_customer_id)):
@@ -110,8 +127,8 @@ def get_payment(payment_id: int, user_id: int = Depends(get_current_customer_id)
 
 # ----- Orders -----
 @router.post("/orders", response_model=OrderPlaceResponse)
-def place_order(data: OrderCreate, user_id: int = Depends(get_current_customer_id)):
-    """Place order. Use delivery_address text or address_id to resolve from saved address; prices from menu_items."""
+async def place_order(data: OrderCreate, user_id: int = Depends(get_current_customer_id)):
+    """Place order. Use delivery_address text or address_id to resolve from saved address; prices from menu_items. Triggers rider dispatch."""
     delivery_address = data.delivery_address or ""
     if data.address_id is not None:
         addr = CustomerService.get_address(user_id, data.address_id)
@@ -129,7 +146,7 @@ def place_order(data: OrderCreate, user_id: int = Depends(get_current_customer_i
         }
         for i in data.items
     ]
-    order = CustomerService.place_order(
+    order, err = CustomerService.place_order(
         user_id,
         data.restaurant_id,
         delivery_address,
@@ -137,12 +154,11 @@ def place_order(data: OrderCreate, user_id: int = Depends(get_current_customer_i
         data.tax_cents,
         data.delivery_fee_cents,
         items,
+        voucher_code=data.voucher_code,
     )
-    if not order:
-        raise HTTPException(
-            status_code=400,
-            detail="Failed to place order (check restaurant and menu items)",
-        )
+    if err or not order:
+        raise HTTPException(status_code=400, detail=err or "Failed to place order")
+    asyncio.create_task(DispatchService.dispatch_order(order.id))
     return {"message": "Order placed", "order": order}
 
 
@@ -157,6 +173,26 @@ def get_order(order_id: int, user_id: int = Depends(get_current_customer_id)):
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
+
+
+@router.get("/orders/{order_id}/track")
+def track_order(order_id: int, user_id: int = Depends(get_current_customer_id)):
+    """Full tracking info: order, restaurant, items, delivery, rider."""
+    data = CustomerService.get_order_tracking(user_id, order_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return data
+
+
+@router.websocket("/ws/{user_id}")
+async def customer_websocket(websocket: WebSocket, user_id: int):
+    """Customer WebSocket for real-time order status updates."""
+    await manager.connect_customer(int(user_id), websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect_customer(int(user_id))
 
 
 # ----- Reviews -----

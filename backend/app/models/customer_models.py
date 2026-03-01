@@ -64,10 +64,17 @@ class OrderCreate(BaseModel):
     restaurant_id: int
     delivery_address: str = ""  # full address text (or use address_id to resolve)
     address_id: Optional[int] = None  # if set, resolve to delivery_address from saved address
-    payment_method: str = "card"  # for the payment record
+    payment_method: str = "cash"  # "cash" = cash on delivery (pay when delivered); "card" = later
     tax_cents: int = 0
     delivery_fee_cents: int = 0
+    voucher_code: Optional[str] = None  # optional discount code (validated at place_order)
     items: List[OrderItemCreate]
+
+
+class VoucherValidateResponse(BaseModel):
+    valid: bool
+    discount_cents: int = 0
+    message: str = ""
 
 class OrderItemResponse(BaseModel):
     id: int

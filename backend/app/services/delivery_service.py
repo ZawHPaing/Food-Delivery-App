@@ -1,7 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from ..repositories.delivery_repo import DeliveryRepository
+from ..repositories.dispatch_repo import DispatchRepository
+from ..repositories.customer_repo import CustomerRepository
 from ..models.delivery_models import DeliveryHistoryItem, RiderProfileResponse
 from ..core.security import hash_password, verify_password, create_access_token
+from ..supabase_client import supabase
 
 class DeliveryService:
     
@@ -75,6 +78,89 @@ class DeliveryService:
         }
     
     @staticmethod
+    def respond_to_dispatch_request(
+        request_id: int, rider_id: int, action: str
+    ) -> Tuple[bool, Optional[int], str]:
+        """
+        Rider accepts or rejects a dispatch request.
+        Returns (success, customer_user_id_for_notify, error_message).
+        On accept: creates delivery, sets order status to rider_assigned, updates dispatch status.
+        """
+        req = DispatchRepository.get_dispatch_request_by_id(request_id)
+        if not req:
+            return False, None, "Request not found"
+        if str(req.get("status")) != "pending":
+            return False, None, "Request already responded"
+        if int(req.get("rider_id", 0)) != int(rider_id):
+            return False, None, "Rider does not match request"
+        order_id = int(req["order_id"])
+
+        if action == "reject":
+            DispatchRepository.update_dispatch_status(request_id, "rejected")
+            return True, None, ""
+
+        if action != "accept":
+            return False, None, "Invalid action"
+
+        # Get order to find customer user_id for WebSocket notify
+        order_row = supabase.table("orders").select("user_id").eq("id", order_id).maybe_single().execute()
+        order_data = getattr(order_row, "data", None)
+        customer_user_id = None
+        if order_data:
+            customer_user_id = order_data.get("user_id") if isinstance(order_data, dict) else (order_data[0].get("user_id") if isinstance(order_data, list) and order_data else None)
+
+        # Create delivery row (order_id, rider_id)
+        delivery = DeliveryRepository.create_delivery(order_id, rider_id, status="assigned")
+        if not delivery:
+            return False, None, "Failed to create delivery"
+
+        # Update order status so customer Order Progress shows "Rider Assigned"
+        from datetime import datetime
+        supabase.table("orders").update({"status": "rider_assigned", "updated_at": datetime.utcnow().isoformat()}).eq("id", order_id).execute()
+
+        # Mark dispatch request as accepted and expire other riders' pending requests for this order
+        DispatchRepository.update_dispatch_status(request_id, "accepted")
+        DispatchRepository.expire_other_requests_for_order(order_id, request_id)
+
+        return True, customer_user_id, ""
+
+    @staticmethod
+    def update_delivery_progress(
+        delivery_id: int, rider_id: int, status: str
+    ) -> Tuple[bool, Optional[int], Optional[int], str]:
+        """
+        Rider marks delivery as picked_up or delivered.
+        Returns (success, order_id, customer_user_id, error).
+        """
+        from datetime import datetime
+        delivery = DeliveryRepository.get_delivery_by_id(delivery_id)
+        if not delivery or int(delivery.get("rider_id", 0)) != int(rider_id):
+            return False, None, None, "Delivery not found or access denied"
+        order_id = int(delivery["order_id"])
+        order_row = supabase.table("orders").select("user_id").eq("id", order_id).maybe_single().execute()
+        order_data = getattr(order_row, "data", None)
+        customer_user_id = None
+        if order_data:
+            customer_user_id = order_data.get("user_id") if isinstance(order_data, dict) else (order_data[0].get("user_id") if isinstance(order_data, list) and order_data else None)
+
+        now = datetime.utcnow().isoformat()
+        if status == "picked_up":
+            DeliveryRepository.update_delivery_status(
+                delivery_id, rider_id, "picked_up", picked_up_at=now
+            )
+            supabase.table("orders").update({"status": "picked_up", "updated_at": now}).eq("id", order_id).execute()
+        elif status == "delivered":
+            DeliveryRepository.update_delivery_status(
+                delivery_id, rider_id, "delivered", delivered_at=now
+            )
+            supabase.table("orders").update({"status": "delivered", "updated_at": now}).eq("id", order_id).execute()
+            # Mark COD payment as paid (cash collected by rider)
+            CustomerRepository.mark_payment_paid_for_order(order_id)
+        else:
+            return False, None, None, "Invalid status"
+        return True, order_id, customer_user_id, ""
+
+    @staticmethod
     def get_delivery_history(rider_id: int) -> List[DeliveryHistoryItem]:
         """Get formatted delivery history for a rider"""
         # Get deliveries
@@ -113,24 +199,33 @@ class DeliveryService:
         rider = DeliveryRepository.get_rider_by_user_id(user["id"])
         deliveries = []
         
+        cash_collected_cents = 0
         if rider:
             deliveries = DeliveryRepository.get_rider_deliveries(rider["id"])
             
             if deliveries:
                 order_ids = [d["order_id"] for d in deliveries]
                 orders = DeliveryRepository.get_orders_by_ids(order_ids)
+                payments_by_order = CustomerRepository.get_payments_by_order_ids(order_ids)
                 
-                # Add delivery fee to each delivery
                 for d in deliveries:
-                    d["delivery_fee_cents"] = orders.get(d["order_id"], {}).get("delivery_fee_cents", 0)
+                    order = orders.get(d["order_id"], {})
+                    d["delivery_fee_cents"] = order.get("delivery_fee_cents", 0)
+                    # Cash on delivery: sum order total for delivered orders paid in cash
+                    if (d.get("status") == "delivered"):
+                        pay = payments_by_order.get(d["order_id"], {})
+                        if (pay.get("payment_method") or "").lower() == "cash":
+                            cash_collected_cents += order.get("total_cents", 0)
         
         return {
+            "id": user.get("id"),
             "first_name": user.get("first_name"),
             "last_name": user.get("last_name"),
             "email": user.get("email"),
             "phone": user.get("phone"),
             "rider": rider,
-            "deliveries": deliveries
+            "deliveries": deliveries,
+            "cash_collected_cents": cash_collected_cents,
         }
     
     @staticmethod

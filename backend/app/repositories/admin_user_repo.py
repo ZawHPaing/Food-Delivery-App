@@ -49,5 +49,8 @@ class AdminUserRepository:
             .delete() \
             .eq("id", user_id) \
             .execute()
-
-        return response.count > 0
+        count = getattr(response, "count", None)
+        if count is not None:
+            return count > 0
+        data = getattr(response, "data", None)
+        return bool(data and len(data) > 0)

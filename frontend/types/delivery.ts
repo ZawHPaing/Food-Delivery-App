@@ -27,6 +27,7 @@ export interface Customer {
 
 export interface DeliveryRequest {
   id: string;
+  requestId: string; // backend dispatch_requests.id for accept/decline
   shop: Shop;
   items: OrderItem[];
   customer: Customer;

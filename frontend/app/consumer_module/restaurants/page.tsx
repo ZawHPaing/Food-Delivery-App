@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { restaurants as dbRestaurants } from "@/data/restaurants";
+import { getRestaurantsFromApi } from "@/lib/discoveryApi";
 import SearchBar from "@/components/ui/SearchBar";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
+import type { Restaurant } from "@/types";
 
 type QuickFilterOption = "all" | "fast-food" | "pizza" | "asian" | "coffee" | "mexican";
 
 export default function RestaurantsPage() {
-  const [sortBy, setSortBy] = useState<SortOption>("rating"); // "rating" matches existing default, but needs to be compatible with SortOption type
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(dbRestaurants);
+  const [sortBy, setSortBy] = useState<SortOption>("rating");
   const [activeFilters, setActiveFilters] = useState<FilterOptions>({
     cuisines: [],
     priceRange: null,
@@ -50,7 +53,6 @@ export default function RestaurantsPage() {
     if (id === "all") {
       setActiveFilters(prev => ({ ...prev, cuisines: [] }));
     } else {
-      // Map quick filter to cuisine name
       const cuisineMap: Record<string, string> = {
         "fast-food": "Fast Food",
         "pizza": "Pizza",
@@ -63,8 +65,33 @@ export default function RestaurantsPage() {
     }
   };
 
+  useEffect(() => {
+    getRestaurantsFromApi().then((apiList) => {
+      if (apiList.length > 0) {
+        setRestaurants(
+          apiList.map((r) => ({
+            id: r.id,
+            name: r.name,
+            description: r.description ?? "",
+            latitude: 0,
+            longitude: 0,
+            city: r.city ?? "",
+            cuisine_type: r.cuisine_type ?? "",
+            average_rating: r.average_rating ?? 0,
+            total_reviews: r.total_reviews ?? 0,
+            created_at: "",
+            deliveryTime: "25-35 min",
+            deliveryFee: "Free",
+            distance: "",
+            isOpen: true,
+          }))
+        );
+      }
+    });
+  }, []);
+
   // Filter restaurants
-  const filteredRestaurants = dbRestaurants.filter((restaurant) => {
+  const filteredRestaurants = restaurants.filter((restaurant) => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -136,11 +163,10 @@ export default function RestaurantsPage() {
     }
 
     // Max Delivery Time
-    if (activeFilters.maxDeliveryTime) {
-      // Parse "25-35 min" -> 35
-      const timeMatch = restaurant.deliveryTime.match(/(\d+)-(\d+)/);
-      const maxTime = timeMatch ? parseInt(timeMatch[2]) : parseInt(restaurant.deliveryTime);
-      if (maxTime > activeFilters.maxDeliveryTime) return false;
+    if (activeFilters.maxDeliveryTime && restaurant.deliveryTime) {
+      const timeMatch = String(restaurant.deliveryTime).match(/(\d+)-(\d+)/);
+      const maxTime = timeMatch ? parseInt(timeMatch[2]) : parseInt(String(restaurant.deliveryTime), 10);
+      if (!isNaN(maxTime) && maxTime > activeFilters.maxDeliveryTime) return false;
     }
 
     return true;

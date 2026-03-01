@@ -1,6 +1,7 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 from ..repositories.customer_repo import CustomerRepository
 from ..repositories.user_repo import UserRepository
+from ..repositories.voucher_repo import VoucherRepository
 from ..models.customer_models import (
     AddressResponse,
     PaymentResponse,
@@ -9,6 +10,7 @@ from ..models.customer_models import (
     ReviewResponse,
     NotificationResponse,
     CustomerProfileResponse,
+    VoucherValidateResponse,
 )
 
 
@@ -102,6 +104,24 @@ class CustomerService:
             paid_at=row.get("paid_at"),
         )
 
+    # ----- Vouchers -----
+    @staticmethod
+    def validate_voucher(
+        code: str,
+        subtotal_cents: int,
+        restaurant_id: Optional[int] = None,
+    ) -> VoucherValidateResponse:
+        if not code or not code.strip():
+            return VoucherValidateResponse(valid=False, discount_cents=0, message="No voucher code")
+        voucher, err = VoucherRepository.validate(code, subtotal_cents, restaurant_id)
+        if err:
+            return VoucherValidateResponse(valid=False, discount_cents=0, message=err)
+        return VoucherValidateResponse(
+            valid=True,
+            discount_cents=voucher["discount_cents"],
+            message="Voucher applied",
+        )
+
     # ----- Orders -----
     @staticmethod
     def place_order(
@@ -112,22 +132,33 @@ class CustomerService:
         tax_cents: int,
         delivery_fee_cents: int,
         items: List[Dict],
-    ) -> Optional[OrderResponse]:
-        """Place order: resolve prices from menu_items, create order, order_items, and payment."""
+        voucher_code: Optional[str] = None,
+    ) -> Tuple[Optional[OrderResponse], Optional[str]]:
+        """Place order. Returns (order, None) on success or (None, error_message) on failure."""
         restaurant = CustomerRepository.get_restaurant_by_id(restaurant_id)
         if not restaurant:
-            return None
+            return None, "Restaurant not found"
         menu_item_ids = [i["menu_item_id"] for i in items]
         menu_map = CustomerRepository.get_menu_items_by_ids(menu_item_ids)
         if len(menu_map) != len(menu_item_ids):
-            return None  # all menu items must exist
+            missing = set(menu_item_ids) - set(menu_map.keys())
+            return None, f"Menu item(s) not found: {sorted(missing)}"
         subtotal_cents = 0
         for it in items:
             price_cents = menu_map[it["menu_item_id"]]["price_cents"]
             subtotal_cents += it["quantity"] * price_cents
-        total_cents = subtotal_cents + tax_cents + delivery_fee_cents
-        if total_cents <= 0:
-            return None
+        discount_cents = 0
+        voucher_code_saved: Optional[str] = None
+        validated_voucher: Optional[Dict] = None
+        if voucher_code and voucher_code.strip():
+            voucher, err = VoucherRepository.validate(voucher_code.strip(), subtotal_cents, restaurant_id)
+            if voucher and not err:
+                discount_cents = voucher["discount_cents"]
+                voucher_code_saved = voucher.get("code")
+                validated_voucher = voucher
+        total_cents = max(0, subtotal_cents + tax_cents + delivery_fee_cents - discount_cents)
+        if total_cents <= 0 and subtotal_cents > 0:
+            total_cents = 0
         order_data = {
             "restaurant_id": restaurant_id,
             "status": "pending",
@@ -136,10 +167,14 @@ class CustomerService:
             "delivery_fee_cents": delivery_fee_cents,
             "total_cents": total_cents,
             "delivery_address": delivery_address,
+            "discount_cents": discount_cents,
+            "voucher_code": voucher_code_saved,
         }
         order = CustomerRepository.create_order(user_id, order_data)
         if not order:
-            return None
+            return None, "Failed to create order (database insert failed)"
+        if validated_voucher:
+            VoucherRepository.increment_use(validated_voucher["id"])
         for it in items:
             price_cents = menu_map[it["menu_item_id"]]["price_cents"]
             CustomerRepository.create_order_item(
@@ -149,8 +184,18 @@ class CustomerService:
                 price_cents,
                 it.get("special_instructions"),
             )
-        CustomerRepository.create_payment_for_order(order["id"], user_id, total_cents, payment_method, status="paid")
-        return CustomerService.get_order(user_id, order["id"])
+        # Cash on delivery: payment status pending until rider collects; card: paid when charged (later)
+        payment_status = "paid" if (payment_method or "").lower() == "card" else "pending"
+        CustomerRepository.create_payment_for_order(order["id"], user_id, total_cents, payment_method or "cash", status=payment_status)
+        result = CustomerService.get_order(user_id, order["id"])
+        if not result:
+            return None, "Order created but failed to load"
+        return result, None
+
+    @staticmethod
+    def get_order_tracking(user_id: int, order_id: int) -> Optional[dict]:
+        """Full order details for tracking page (order, restaurant, items, delivery, rider)."""
+        return CustomerRepository.get_order_tracking(order_id, user_id)
 
     @staticmethod
     def get_order(user_id: int, order_id: int) -> Optional[OrderResponse]:
@@ -221,3 +266,14 @@ class CustomerService:
     def list_notifications(user_id: int, limit: int = 50) -> List[NotificationResponse]:
         rows = CustomerRepository.get_notifications_by_user_id(user_id, limit=limit)
         return [NotificationResponse(**r) for r in rows]
+
+    # ----- Public: browse restaurants (no auth) -----
+    @staticmethod
+    def get_restaurants_list() -> List[dict]:
+        """List approved restaurants for customer app."""
+        return CustomerRepository.get_restaurants_list()
+
+    @staticmethod
+    def get_restaurant_with_menu(restaurant_id: int) -> Optional[dict]:
+        """Get restaurant with menus and menu items for browsing/ordering."""
+        return CustomerRepository.get_restaurant_with_menu(restaurant_id)

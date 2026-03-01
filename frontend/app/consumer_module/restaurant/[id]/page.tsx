@@ -15,29 +15,94 @@ import {
   getPopularItems,
   getRestaurantReviews,
 } from "@/data/restaurants";
+import { getRestaurantWithMenuFromApi } from "@/lib/discoveryApi";
+import type { RestaurantWithMenu } from "@/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+function apiToRestaurantWithMenu(api: NonNullable<Awaited<ReturnType<typeof getRestaurantWithMenuFromApi>>>): RestaurantWithMenu {
+  const categories: Category[] = api.menus.map((m) => ({ id: m.id, name: m.name || "Menu" }));
+  const items: MenuItemWithCategory[] = api.menu_items.map((mi) => ({
+    id: mi.id,
+    menu_id: mi.menu_id,
+    name: mi.name,
+    description: mi.description ?? "",
+    price_cents: mi.price_cents,
+    is_available: mi.is_available !== false,
+    image: mi.image_url ?? undefined,
+    categories: [{ id: mi.menu_id, name: api.menus.find((m) => m.id === mi.menu_id)?.name || "Menu" }],
+  }));
+  const menu = {
+    id: api.menus[0]?.id ?? api.id,
+    restaurant_id: api.id,
+    name: "Menu",
+    is_active: true,
+    items,
+  };
+  return {
+    id: api.id,
+    name: api.name,
+    description: api.description ?? "",
+    latitude: 0,
+    longitude: 0,
+    city: api.city ?? "",
+    cuisine_type: api.cuisine_type ?? "",
+    average_rating: api.average_rating ?? 0,
+    total_reviews: api.total_reviews ?? 0,
+    created_at: "",
+    image: undefined,
+    deliveryTime: "25-35 min",
+    deliveryFee: "Free",
+    distance: "",
+    isOpen: true,
+    menus: [menu],
+    categories,
+  };
+}
+
 export default function RestaurantPage({ params }: PageProps) {
   const { id } = use(params);
   const restaurantId = parseInt(id, 10);
-  const restaurant = getRestaurantWithMenu(restaurantId);
+  const [restaurant, setRestaurant] = useState<RestaurantWithMenu | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showStickyNav, setShowStickyNav] = useState(false);
   const { itemCount, totalCents } = useCart();
 
-  // Handle scroll for sticky nav
   useEffect(() => {
-    const handleScroll = () => {
-      setShowStickyNav(window.scrollY > 400);
-    };
+    let cancelled = false;
+    getRestaurantWithMenuFromApi(restaurantId)
+      .then((api) => {
+        if (cancelled) return;
+        if (api) setRestaurant(apiToRestaurantWithMenu(api));
+        else setRestaurant(getRestaurantWithMenu(restaurantId));
+      })
+      .catch(() => {
+        if (!cancelled) setRestaurant(getRestaurantWithMenu(restaurantId));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [restaurantId]);
+
+  useEffect(() => {
+    const handleScroll = () => setShowStickyNav(window.scrollY > 400);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">
+        <p className="text-gray-500">Loading restaurant…</p>
+      </div>
+    );
+  }
 
   if (!restaurant) {
     notFound();

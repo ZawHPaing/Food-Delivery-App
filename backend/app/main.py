@@ -4,7 +4,17 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes
+from app.routes import (
+    delivery_routes,
+    auth_routes,
+    admin_users_routes,
+    customer_routes,
+    discovery_routes,
+    menu_routes,
+    restaurant_routes,
+    admin_restaurants_routes,
+    consumer_routes,
+)
 
 # Allowed frontend origins for CORS
 CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
@@ -70,10 +80,15 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
+app.include_router(discovery_routes.router)  # /restaurants (public, no auth)
+app.include_router(consumer_routes.router)   # /consumer/*
 app.include_router(delivery_routes.router)   # /delivery/*
 app.include_router(auth_routes.router)       # /auth/*
 app.include_router(admin_users_routes.router)
 app.include_router(customer_routes.router)   # /customer/*
+app.include_router(menu_routes.router)       # /restaurant/menus/*
+app.include_router(restaurant_routes.router)  # /restaurant/orders, /restaurant/ws/*
+app.include_router(admin_restaurants_routes.router)  # /admin/restaurants/*
 
 @app.get("/")
 def root():

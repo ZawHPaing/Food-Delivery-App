@@ -20,35 +20,23 @@ export function VehicleSelector({ selected, onChange, allowedTypes }: VehicleSel
   const isSingle = visibleVehicles.length === 1;
 
   return (
-    <div className="p-4 rounded-xl bg-card shadow-card">
-
-      <div className={cn('grid gap-2', isSingle ? 'grid-cols-1' : 'grid-cols-2')}>
+    <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
+      <div className={cn('grid gap-3', isSingle ? 'grid-cols-1' : 'grid-cols-2')}>
         {visibleVehicles.map(({ type, icon: Icon, label, speed }) => (
           <button
             key={type}
+            type="button"
             onClick={() => onChange(type)}
             className={cn(
-              'flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-200',
+              'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200',
               selected === type
-                ? 'bg-primary/15 border-2 border-primary shadow-glow'
-                : 'bg-secondary/50 border-2 border-transparent hover:bg-secondary'
+                ? 'border-gray-900 bg-gray-50 text-gray-900'
+                : 'border-transparent bg-gray-50/50 hover:bg-gray-50 text-gray-600'
             )}
           >
-            <Icon
-              className={cn(
-                'w-6 h-6',
-                selected === type ? 'text-primary' : 'text-muted-foreground'
-              )}
-            />
-            <span
-              className={cn(
-                'text-sm font-medium',
-                selected === type ? 'text-primary' : 'text-foreground'
-              )}
-            >
-              {label}
-            </span>
-            <span className="text-xs text-muted-foreground text-center">{speed}</span>
+            <Icon className={cn('w-6 h-6', selected === type ? 'text-gray-900' : 'text-gray-500')} />
+            <span className="text-sm font-medium">{label}</span>
+            <span className="text-xs text-gray-500 text-center">{speed}</span>
           </button>
         ))}
       </div>
