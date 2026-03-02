@@ -21,7 +21,7 @@ export default function AdminUsersPage() {
     setLoading(true);
     try {
       const url = filter 
-        ? `http://localhost:8000/admin/users/?role=${filter}`
+        ? `http://localhost:8000/admin/users/?user_type=${filter}`
         : "http://localhost:8000/admin/users/";
       
       const res = await fetch(url);
@@ -51,26 +51,49 @@ export default function AdminUsersPage() {
       const res = await fetch(`http://localhost:8000/admin/users/${id}`, {
         method: "DELETE",
       });
+      const data = await res.json();
+      
       if (res.ok) {
         fetchUsers();
+      } else {
+        alert(data.detail || "Failed to delete user");
       }
     } catch (err) {
       console.error("Delete error:", err);
+      alert("Network error while deleting user");
     }
   };
 
   const changeRole = async (id: number, role: string) => {
     try {
+      console.log(`Changing user ${id} role to:`, role); // Debug log
+      
+      // Send both user_id and user_type in the body as expected by the backend
       const res = await fetch(`http://localhost:8000/admin/users/${id}/role`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_type: role }),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+          user_id: id,
+          user_type: role 
+        }),
       });
+      
+      const data = await res.json();
+      console.log("Role change response:", data); // Debug log
+      
       if (res.ok) {
         fetchUsers();
+        // Optional: Show success message
+        // alert("User role updated successfully");
+      } else {
+        alert(data.detail || "Failed to update user role");
       }
     } catch (err) {
       console.error("Role change error:", err);
+      alert("Network error while updating role");
     }
   };
 
@@ -82,8 +105,25 @@ export default function AdminUsersPage() {
         return 'bg-primary/10 text-primary';
       case 'rider':
         return 'bg-success/10 text-success';
+      case 'rider_pending':
+        return 'bg-warning/10 text-warning border border-warning/30'; // Yellow for pending
       default:
         return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch(role) {
+      case 'rider_pending':
+        return 'Rider (Pending)';
+      case 'rider':
+        return 'Rider';
+      case 'admin':
+        return 'Admin';
+      case 'owner':
+        return 'Owner';
+      default:
+        return role || 'Customer';
     }
   };
 
@@ -108,7 +148,8 @@ export default function AdminUsersPage() {
         >
           <option value="">All Users</option>
           <option value="customer">Customer</option>
-          <option value="rider">Rider</option>
+          <option value="rider_pending">Rider (Pending)</option>
+          <option value="rider">Rider (Approved)</option>
           <option value="owner">Restaurant Owner</option>
           <option value="admin">Admin</option>
         </select>
@@ -143,7 +184,7 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground/70">{user.phone || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(user.user_type)}`}>
-                      {user.user_type}
+                      {getRoleDisplayName(user.user_type)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
@@ -153,7 +194,8 @@ export default function AdminUsersPage() {
                       className="text-sm border border-border rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/50"
                     >
                       <option value="customer">Customer</option>
-                      <option value="rider">Rider</option>
+                      <option value="rider_pending">Rider (Pending)</option>
+                      <option value="rider">Rider (Approved)</option>
                       <option value="owner">Owner</option>
                       <option value="admin">Admin</option>
                     </select>

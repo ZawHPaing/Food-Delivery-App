@@ -10,40 +10,47 @@ class DeliveryService:
     
     @staticmethod
     def authenticate_rider(email: str, password: str) -> Optional[dict]:
-        """Authenticate a rider and return token data"""
+        """Authenticate a rider and return token data - allows both rider and rider_pending"""
         user = DeliveryRepository.find_user_by_email(email)
         
-        if not user or user["user_type"] != "rider":
+        # Allow both rider and rider_pending to log in
+        if not user or user["user_type"] not in ["rider", "rider_pending"]:
             return None
         
         if not verify_password(password, user["password_hash"]):
             return None
         
-        token = create_access_token({"email": user["email"]})
+        token = create_access_token({
+            "email": user["email"],
+            "user_id": user["id"],
+            "user_type": user["user_type"]
+        })
         
         return {
             "message": "Login successful",
             "access_token": token,
             "token_type": "bearer",
-            "email": user["email"]
+            "email": user["email"],
+            "user_type": user["user_type"],  # Include user_type in response
+            "user_id": user["id"]             # Include user_id in response
         }
     
     @staticmethod
     def create_rider_account(signup_data: dict) -> Optional[dict]:
-        """Create a new rider account"""
+        """Create a new rider account with pending status"""
         from datetime import datetime
         
         # Hash password
         hashed_pwd = hash_password(signup_data["password"])
         
-        # Create user
+        # Create user with 'rider_pending' status
         user_data = {
             "email": signup_data["email"],
             "password_hash": hashed_pwd,
             "first_name": signup_data["first_name"],
             "last_name": signup_data["last_name"],
             "phone": signup_data["phone"],
-            "user_type": "rider",
+            "user_type": "rider_pending",  # Changed from "rider" to "rider_pending"
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }
@@ -52,12 +59,12 @@ class DeliveryService:
         if not user:
             return None
         
-        # Create rider
+        # Create rider (still create rider record, but user is pending)
         rider_data = {
             "user_id": user["id"],
             "vehicle_type": signup_data["vehicle"],
             "license_plate": signup_data["license_plate"],
-            "status": "inactive",
+            "status": "inactive",  # Rider status inactive until approved
             "current_latitude": None,
             "current_longitude": None,
             "last_location_update": None,
@@ -68,10 +75,15 @@ class DeliveryService:
         if not rider:
             return None
         
-        token = create_access_token({"email": user["email"]})
+        # Still create token but user will be redirected to pending page
+        token = create_access_token({
+            "email": user["email"],
+            "user_id": user["id"],
+            "user_type": user["user_type"]
+        })
         
         return {
-            "message": "Rider signup successful!",
+            "message": "Rider signup successful! Your account is pending approval.",
             "user": user,
             "rider": rider,
             "access_token": token
@@ -223,6 +235,7 @@ class DeliveryService:
             "last_name": user.get("last_name"),
             "email": user.get("email"),
             "phone": user.get("phone"),
+            "user_type": user.get("user_type"),  # Include user_type in profile
             "rider": rider,
             "deliveries": deliveries,
             "cash_collected_cents": cash_collected_cents,

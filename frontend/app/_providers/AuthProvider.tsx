@@ -21,13 +21,12 @@ export type User = {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  user_type?: string;  // Make sure this is included!
   address?: string;
   rider?: Rider;
   deliveries?: Array<{ delivery_fee_cents?: number }>;
   cash_collected_cents?: number;  // COD cash collected by rider
 };
-
-
 
 type AuthState = {
   isLoggedIn: boolean;
@@ -74,8 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({
     ...state,
 
-    
-    // After login in AuthProvider
     login: async (email: string, password: string) => {
       const response = await fetch("http://localhost:8000/delivery/login", {
         method: "POST",
@@ -89,14 +86,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       localStorage.setItem(TOKEN_KEY, data.access_token);
 
-      // Store minimal user first
+      // Create user object with ALL data from login response
+      const userData: User = {
+        id: data.user_id?.toString() || '',
+        username: data.email || '',
+        email: data.email || '',
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        phone: data.phone || '',
+        user_type: data.user_type || '',  // This is the key field!
+        rider: data.rider,
+        deliveries: data.deliveries || [],
+        cash_collected_cents: data.cash_collected_cents || 0,
+      };
+      
       const next: AuthState = {
         isLoggedIn: true,
-        user: { ...data, fullName: '', email: data.email, id: '', username: '' },
+        user: userData,
       };
+      
+      console.log("Setting initial user from login:", userData);
       setState(next);
       persistState(next);
       
+      // Then fetch the full profile
       try {
         const res = await fetch(`http://localhost:8000/delivery/profile?email=${encodeURIComponent(data.email)}`, {
           headers: { Authorization: `Bearer ${data.access_token}` },
@@ -106,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profileData = await res.json();
         console.log("profileData from backend:", profileData);
 
-        // Merge the fetched profile into `user`
+        // Merge the fetched profile, but preserve everything
         setState(prev => {
           if (!prev.user) return prev;
           const merged: AuthState = {
@@ -116,8 +129,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               ...profileData,
               id: profileData.id != null ? String(profileData.id) : prev.user.id,
               username: prev.user.username,
+              user_type: prev.user.user_type, // Preserve the user_type from login
             },
           };
+          console.log("Merged user:", merged.user);
           persistState(merged);
           return merged;
         });

@@ -22,13 +22,25 @@ class AdminUserService:
 
     @staticmethod
     def update_user_role(user_id: int, new_role: str) -> Optional[Dict]:
-        allowed_roles = ["customer", "rider", "owner", "admin"]
+        # Allow both rider and rider_pending as valid roles
+        allowed_roles = ["customer", "rider", "owner", "admin", "rider_pending"]
 
         if new_role not in allowed_roles:
             print(f"Invalid role: {new_role}")
             return None
 
         try:
+            # When changing from rider_pending to rider, also update rider status
+            if new_role == "rider":
+                # Get the user first to check if they were pending
+                user = AdminUserRepository.get_user_by_id(user_id)
+                if user and user.get("user_type") == "rider_pending":
+                    # Update rider status to available when approved
+                    from ..repositories.delivery_repo import DeliveryRepository
+                    rider = DeliveryRepository.get_rider_by_user_id(user_id)
+                    if rider:
+                        DeliveryRepository.update_rider_status(rider["id"], "available")
+            
             return AdminUserRepository.update_user_role(user_id, new_role)
         except Exception as e:
             print(f"Error in update_user_role for user {user_id}: {e}")

@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from starlette.requests import Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes, admin_menu_routes, admin_restaurant_routes, discovery_routes, menu_routes, restaurant_routes, consumer_routes
+from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes, admin_menu_routes, admin_restaurant_routes, discovery_routes, menu_routes, restaurant_routes, consumer_routes, admin_order_routes
 import os
 
 # Allowed frontend origins for CORS - Add your server IP
@@ -90,6 +90,7 @@ app.include_router(admin_menu_routes.router)  # /menu/*
 app.include_router(admin_restaurant_routes.router)
 app.include_router(menu_routes.router)       # /restaurant/menus/*
 app.include_router(restaurant_routes.router)  # /restaurant/orders, /restaurant/ws/* # /admin/restaurants/*
+app.include_router(admin_order_routes.router)  # /admin/orders/*
 
 @app.get("/")
 def root():

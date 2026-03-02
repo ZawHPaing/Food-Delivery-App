@@ -18,4 +18,4 @@ class UserResponse(BaseModel):
 
 class UpdateUserRoleRequest(BaseModel):
     user_id: int
-    user_type: str
+    user_type: str  # Can be: customer, rider, owner, admin, rider_pending

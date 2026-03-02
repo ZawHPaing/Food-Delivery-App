@@ -13,7 +13,7 @@ export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/consumer_module";
-  const { login, isLoggedIn } = useCustomerAuth();
+  const { login, isLoggedIn, user } = useCustomerAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +25,7 @@ export default function LoginForm() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push(redirect.startsWith("/") ? redirect : "/consumer_module");
-      router.refresh();
+      // Don't redirect here - let the useEffect handle it based on user role
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -35,10 +34,21 @@ export default function LoginForm() {
   };
 
   useEffect(() => {
-    if (isLoggedIn) {
-      router.replace(redirect.startsWith("/") ? redirect : "/consumer_module");
+  if (isLoggedIn && user) {
+    console.log("User logged in:", user); // Debug log
+    
+    // Check user type and redirect accordingly
+    if (user.user_type === "admin") {
+      console.log("Admin user detected, redirecting to admin panel");
+      router.push("/admin_module/user_management");
+    } else {
+      // For customers and other roles, use the original redirect
+      const destination = redirect.startsWith("/") ? redirect : "/consumer_module";
+      router.push(destination);
     }
-  }, [isLoggedIn, redirect, router]);
+    router.refresh();
+  }
+}, [isLoggedIn, user, redirect, router]);
 
   if (isLoggedIn) {
     return null;

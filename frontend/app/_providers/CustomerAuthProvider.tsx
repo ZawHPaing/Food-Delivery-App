@@ -76,28 +76,35 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     () => ({
       ...state,
       login: async (email: string, password: string) => {
-        const res = await fetch(`${AUTH_API_BASE}/auth/user/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok)
-          throw new Error(
-            (typeof data.detail === "string"
-              ? data.detail
-              : (data.detail as { message?: string })?.message) ||
-              "Invalid email or password"
-          );
-        const token = data.access_token;
-        const user: CustomerUser = {
-          user_id: data.user_id,
-          email: data.email,
-          user_type: data.user_type || "customer",
-        };
-        setState({ isLoggedIn: true, user, token });
-        persistState(user, token);
-      },
+  const res = await fetch(`${AUTH_API_BASE}/auth/user/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok)
+    throw new Error(
+      (typeof data.detail === "string"
+        ? data.detail
+        : (data.detail as { message?: string })?.message) ||
+        "Invalid email or password"
+    );
+  
+  const token = data.access_token;
+  
+  // Include full user data from response
+  const user: CustomerUser = {
+    user_id: data.user_id,
+    email: data.email,
+    user_type: data.user_type || "customer",
+  };
+  
+  console.log("Login response data:", data); // Debug log
+  console.log("User type from login:", user.user_type); // Debug log
+  
+  setState({ isLoggedIn: true, user, token });
+  persistState(user, token);
+},
       register: async (data) => {
         let res: Response;
         try {
@@ -143,6 +150,9 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
           first_name: u.first_name ?? data.first_name,
           last_name: u.last_name ?? data.last_name,
         };
+        
+        console.log("Registration response user type:", user.user_type); // Debug log
+        
         setState({ isLoggedIn: true, user, token });
         persistState(user, token);
       },
