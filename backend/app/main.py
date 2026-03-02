@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.routing import APIRoute, APIWebSocketRoute
 from starlette.requests import Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.routes import delivery_routes, auth_routes, admin_users_routes, customer_routes, admin_menu_routes, admin_restaurant_routes, discovery_routes, menu_routes, restaurant_routes, consumer_routes
@@ -98,12 +99,16 @@ def root():
 def health_check():
     return {"status": "healthy", "cors_origins": CORS_ORIGINS}
 
-# After all routers are included
 @app.on_event("startup")
 async def startup_event():
     print("\n" + "=" * 80)
     print("ALL REGISTERED ROUTES:")
     print("=" * 80)
+
     for route in app.routes:
-        print(f"Path: {route.path}, Methods: {route.methods}, Name: {route.name}")
+        if isinstance(route, APIRoute):
+            print(f"[HTTP] Path: {route.path}, Methods: {route.methods}, Name: {route.name}")
+        elif isinstance(route, APIWebSocketRoute):
+            print(f"[WebSocket] Path: {route.path}, Name: {route.name}")
+
     print("=" * 80 + "\n")

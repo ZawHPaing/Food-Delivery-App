@@ -4,8 +4,10 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # Load .env from the app directory (where the file lives)
-_env_path = Path(__file__).resolve().parent / ".env"
-load_dotenv(_env_path)
+#_env_path = Path(__file__).resolve().parent / ".env"
+#load_dotenv(_env_path)
+
+load_dotenv()  # automatically finds backend/.env
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
