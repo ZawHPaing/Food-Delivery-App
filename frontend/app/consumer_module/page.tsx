@@ -10,7 +10,16 @@ import EventBannerSlider from "@/components/ui/EventBannerSlider";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
 import { getRestaurantsFromApi, getRestaurantWithMenuFromApi } from "@/lib/discoveryApi";
 
-const transformRestaurant = (r: { id: number; name: string; cuisine_type?: string; average_rating?: number; deliveryTime?: string; deliveryFee?: string; distance?: string; image?: string }, isPromoted = false) => ({
+const transformRestaurant = (r: { 
+  id: number; 
+  name: string; 
+  cuisine_type?: string; 
+  average_rating?: number; 
+  deliveryTime?: string; 
+  deliveryFee?: string; 
+  distance?: string; 
+  image_url?: string | null 
+}, isPromoted = false) => ({
   id: String(r.id),
   name: r.name,
   cuisine: r.cuisine_type ?? "",
@@ -18,11 +27,11 @@ const transformRestaurant = (r: { id: number; name: string; cuisine_type?: strin
   deliveryTime: r.deliveryTime ?? "25-35 min",
   deliveryFee: r.deliveryFee ?? "Free",
   distance: r.distance,
-  image: r.image,
+  image: r.image_url ?? undefined,
   isPromoted,
 });
 
-// Offers/Promotions data
+// Offers/Promotions data - kept for banners
 const offers = [
   {
     id: "1",
@@ -60,37 +69,6 @@ const offers = [
   },
 ];
 
-// Vouchers data
-const vouchers = [
-  {
-    id: "v1",
-    title: "Free Delivery Voucher",
-    description: "Valid for orders above $20",
-    discount: "FREE DELIVERY",
-    code: "FREEDEL20",
-    image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=400&fit=crop",
-    link: "#",
-  },
-  {
-    id: "v2",
-    title: "$5 Off Voucher",
-    description: "Save $5 on your next order",
-    discount: "$5 OFF",
-    code: "SAVE5",
-    image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=400&fit=crop",
-    link: "#",
-  },
-  {
-    id: "v3",
-    title: "20% Off Voucher",
-    description: "Get 20% off on all restaurants",
-    discount: "20% OFF",
-    code: "SAVE20",
-    image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=400&fit=crop",
-    link: "#",
-  },
-];
-
 type RestaurantRow = {
   id: number;
   name: string;
@@ -105,7 +83,7 @@ type RestaurantRow = {
   deliveryTime?: string;
   deliveryFee?: string;
   distance?: string;
-  image?: string;
+  image_url?: string | null;
   isOpen?: boolean;
 };
 
@@ -155,6 +133,13 @@ export default function Home() {
     setLoading(true);
     getRestaurantsFromApi()
       .then((apiList) => {
+        console.log('API Restaurants for home page:', apiList);
+        
+        // Log which restaurants have images
+        apiList.forEach(r => {
+          console.log(`Home - Restaurant ${r.id} - ${r.name}: image_url = ${r.image_url || 'none'}`);
+        });
+        
         const rows: RestaurantRow[] = apiList.map((r) => ({
           id: r.id,
           name: r.name,
@@ -169,9 +154,12 @@ export default function Home() {
           deliveryTime: "25-35 min",
           deliveryFee: "Free",
           distance: "",
+          image_url: r.image_url,
           isOpen: true,
         }));
         setRestaurantsList(rows);
+        
+        // Get popular foods from the first restaurant with items
         if (apiList.length > 0) {
           return getRestaurantWithMenuFromApi(apiList[0].id);
         }
@@ -192,6 +180,9 @@ export default function Home() {
           );
         }
       })
+      .catch((error) => {
+        console.error('Error fetching data for home page:', error);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -210,7 +201,7 @@ export default function Home() {
       return distA - distB;
     })
     .slice(0, 5)
-    .map((r) => ({ ...transformRestaurant(r), badge: "NEAR", image: r.image }));
+    .map((r) => ({ ...transformRestaurant(r), badge: "NEAR" }));
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -254,8 +245,9 @@ export default function Home() {
       {/* Main Page Content */}
       <main className="py-6">
         {loading && (
-          <div className="container mx-auto px-4 py-8 text-center text-gray-500">
-            Loading restaurants…
+          <div className="container mx-auto px-4 py-16 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e4002b] mx-auto"></div>
+            <p className="text-gray-500 mt-4">Loading restaurants…</p>
           </div>
         )}
         {!loading && (
@@ -285,52 +277,52 @@ export default function Home() {
         <section className="mb-8">
           <CategoryFilter onCategorySelect={handleCategorySelect} />
         </section>
-        
-        {/* Vouchers Section */}
-        <HorizontalScrollSection
-          title="Vouchers & Discounts"
-          subtitle="Use these codes to save more"
-          items={vouchers}
-          type="vouchers"
-        />
 
         {/* Popular Orders Section */}
-        <HorizontalScrollSection
-          title="Popular Orders"
-          subtitle="Most ordered foods right now"
-          items={popularFoods}
-          type="foods"
-        />
+        {popularFoods.length > 0 && (
+          <HorizontalScrollSection
+            title="Popular Orders"
+            subtitle="Most ordered foods right now"
+            items={popularFoods}
+            type="foods"
+          />
+        )}
 
         {/* Super Restaurants Section */}
-        <HorizontalScrollSection
-          title="Nearest Restaurants"
-          subtitle="Closest picks with great ratings"
-          items={superRestaurants}
-          type="restaurants"
-        />
+        {superRestaurants.length > 0 && (
+          <HorizontalScrollSection
+            title="Nearest Restaurants"
+            subtitle="Closest picks with great ratings"
+            items={superRestaurants}
+            type="restaurants"
+          />
+        )}
 
         {/* Featured Restaurants Grid */}
-        <section className="mb-8">
-          <div className="container mx-auto px-4">
-            <RestaurantGrid
-              title="Featured Restaurants"
-              restaurants={featuredRestaurants}
-              showViewAll={true}
-            />
-          </div>
-        </section>
+        {featuredRestaurants.length > 0 && (
+          <section className="mb-8">
+            <div className="container mx-auto px-4">
+              <RestaurantGrid
+                title="Featured Restaurants"
+                restaurants={featuredRestaurants}
+                showViewAll={true}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Popular Restaurants Grid */}
-        <section className="mb-8">
-          <div className="container mx-auto px-4">
-            <RestaurantGrid
-              title="Popular Restaurants"
-              restaurants={popularRestaurants}
-              showViewAll={true}
-            />
-          </div>
-        </section>
+        {popularRestaurants.length > 0 && (
+          <section className="mb-8">
+            <div className="container mx-auto px-4">
+              <RestaurantGrid
+                title="Popular Restaurants"
+                restaurants={popularRestaurants}
+                showViewAll={true}
+              />
+            </div>
+          </section>
+        )}
         </>
         )}
       </main>
@@ -397,26 +389,6 @@ export default function Home() {
                 <li>
                   <a href="#" className="hover:text-white transition-colors">
                     FAQs
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Terms & Conditions
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Cookie Policy
                   </a>
                 </li>
               </ul>
