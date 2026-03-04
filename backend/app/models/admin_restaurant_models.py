@@ -6,6 +6,7 @@ from datetime import datetime
 class RestaurantBase(BaseModel):
     name: str
     description: Optional[str] = None
+    image_url: Optional[str] = None  # Added this field
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     city: Optional[str] = None
@@ -18,6 +19,7 @@ class RestaurantCreate(RestaurantBase):
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    image_url: Optional[str] = None  # Added this field
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     city: Optional[str] = None
@@ -31,6 +33,7 @@ class RestaurantResponse(RestaurantBase):
     total_reviews: int = 0
     menu_count: int = 0
     order_count: int = 0
+    image_url: Optional[str] = None  # Added this field
 
     class Config:
         from_attributes = True

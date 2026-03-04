@@ -137,59 +137,6 @@ class RestaurantRepository:
     async def get_restaurant_metrics(restaurant_id: int) -> Dict:
         """Get metrics for a specific restaurant"""
         try:
-            # Get menu count - count total menu items across all menus
-            menu_response = supabase.table("menus") \
-                .select("id") \
-                .eq("restaurant_id", restaurant_id) \
-                .execute()
-            
-            menu_ids = [m["id"] for m in menu_response.data] if menu_response.data else []
-            
-            total_menu_items = 0
-            if menu_ids:
-                items_response = supabase.table("menu_items") \
-                    .select("id", count="exact") \
-                    .in_("menu_id", menu_ids) \
-                    .execute()
-                total_menu_items = items_response.count or 0
-            
-            # Get order count
-            order_response = supabase.table("orders") \
-                .select("id", count="exact") \
-                .eq("restaurant_id", restaurant_id) \
-                .execute()
-            
-            # Get average rating
-            review_response = supabase.table("reviews") \
-                .select("rating") \
-                .eq("restaurant_id", restaurant_id) \
-                .execute()
-            
-            avg_rating = 0
-            total_reviews = 0
-            if review_response.data:
-                ratings = [r.get("rating", 0) for r in review_response.data if r.get("rating")]
-                total_reviews = len(ratings)
-                avg_rating = sum(ratings) / total_reviews if ratings else 0
-            
-            return {
-                "menu_count": total_menu_items,
-                "order_count": order_response.count or 0,
-                "average_rating": round(avg_rating, 1),
-                "total_reviews": total_reviews
-            }
-        except Exception as e:
-            print(f"Error getting restaurant metrics for {restaurant_id}: {e}")
-            return {
-                "menu_count": 0,
-                "order_count": 0,
-                "average_rating": 0,
-                "total_reviews": 0
-            }
-    @staticmethod
-    async def get_restaurant_metrics(restaurant_id: int) -> Dict:
-        """Get metrics for a specific restaurant"""
-        try:
             print(f"\n=== Calculating metrics for restaurant {restaurant_id} ===")
             
             # Get all menus for this restaurant

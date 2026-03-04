@@ -29,82 +29,83 @@ export default function RestaurantsPage() {
   }, []);
 
   const fetchData = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    console.log('Fetching restaurants from:', `${API_BASE_URL}/admin/restaurants/`);
-    
-    const [restaurantsRes, statsRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/admin/restaurants/`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-      fetch(`${API_BASE_URL}/admin/restaurants/stats/dashboard`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-    ]);
-
-    console.log('Restaurants response status:', restaurantsRes.status);
-    
-    if (!restaurantsRes.ok) {
-      const errorText = await restaurantsRes.text();
-      console.error('Error response:', errorText);
-      throw new Error(`Failed to fetch restaurants: ${restaurantsRes.status}`);
-    }
-
-    const restaurantsData = await restaurantsRes.json();
-    console.log('Restaurants data:', restaurantsData);
-    
-    if (restaurantsData.restaurants && Array.isArray(restaurantsData.restaurants)) {
-      setRestaurants(restaurantsData.restaurants);
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Fetching restaurants from:', `${API_BASE_URL}/admin/restaurants/`);
       
-      console.log('Restaurant metrics:', restaurantsData.restaurants.map((r: Restaurant) => ({
-        name: r.name,
-        menu_count: r.menu_count,
-        order_count: r.order_count,
-        average_rating: r.average_rating
-      })));
-    } else {
-      console.error('Unexpected data format:', restaurantsData);
-      setRestaurants([]);
-    }
+      const [restaurantsRes, statsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/restaurants/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }),
+        fetch(`${API_BASE_URL}/admin/restaurants/stats/dashboard`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      ]);
 
-    if (statsRes.ok) {
-      const statsData = await statsRes.json();
-      console.log('Stats data:', statsData);
+      console.log('Restaurants response status:', restaurantsRes.status);
       
-      // The stats might be returned directly or nested
-      if (statsData.success) {
-        // If the API returns {success: true, total_restaurants: X, ...}
-        setStats({
-          total_restaurants: statsData.total_restaurants || 0,
-          approved_restaurants: statsData.approved_restaurants || 0,
-          pending_approval: statsData.pending_approval || 0,
-          restaurants_by_city: statsData.restaurants_by_city || {},
-          restaurants_by_cuisine: statsData.restaurants_by_cuisine || {}
-        });
-      } else {
-        // If the API returns the stats directly
-        setStats(statsData);
+      if (!restaurantsRes.ok) {
+        const errorText = await restaurantsRes.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to fetch restaurants: ${restaurantsRes.status}`);
       }
-    } else {
-      console.error('Stats response not OK:', statsRes.status);
-      const errorText = await statsRes.text();
-      console.error('Stats error:', errorText);
+
+      const restaurantsData = await restaurantsRes.json();
+      console.log('Restaurants data:', restaurantsData);
+      
+      if (restaurantsData.restaurants && Array.isArray(restaurantsData.restaurants)) {
+        setRestaurants(restaurantsData.restaurants);
+        
+        console.log('Restaurant metrics:', restaurantsData.restaurants.map((r: Restaurant) => ({
+          name: r.name,
+          menu_count: r.menu_count,
+          order_count: r.order_count,
+          average_rating: r.average_rating,
+          image_url: r.image_url
+        })));
+      } else {
+        console.error('Unexpected data format:', restaurantsData);
+        setRestaurants([]);
+      }
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        console.log('Stats data:', statsData);
+        
+        // The stats might be returned directly or nested
+        if (statsData.success) {
+          // If the API returns {success: true, total_restaurants: X, ...}
+          setStats({
+            total_restaurants: statsData.total_restaurants || 0,
+            approved_restaurants: statsData.approved_restaurants || 0,
+            pending_approval: statsData.pending_approval || 0,
+            restaurants_by_city: statsData.restaurants_by_city || {},
+            restaurants_by_cuisine: statsData.restaurants_by_cuisine || {}
+          });
+        } else {
+          // If the API returns the stats directly
+          setStats(statsData);
+        }
+      } else {
+        console.error('Stats response not OK:', statsRes.status);
+        const errorText = await statsRes.text();
+        console.error('Stats error:', errorText);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch data');
+    } finally {
+      setLoading(false);
     }
-    
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    setError(error instanceof Error ? error.message : 'Failed to fetch data');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleApprove = async (id: number, approve: boolean) => {
     try {
@@ -291,87 +292,101 @@ export default function RestaurantsPage() {
       </div>
 
       {/* Restaurants Grid */}
-{loading ? (
-  <div className="flex justify-center items-center h-64">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-  </div>
-) : (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {filteredRestaurants.length > 0 ? (
-      filteredRestaurants.map((restaurant) => (
-        <div key={restaurant.id} className="glass-card rounded-2xl p-6 hover:shadow-glow transition-all">
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center space-x-3">
-              <span className="text-3xl">{getCuisineIcon(restaurant.cuisine_type)}</span>
-              <div>
-                <h3 className="font-semibold text-lg">{restaurant.name}</h3>
-                <p className="text-sm text-muted-foreground">{restaurant.city || 'Location not set'}</p>
-              </div>
-            </div>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              restaurant.is_approved 
-                ? 'bg-success/10 text-success' 
-                : 'bg-warning/10 text-warning'
-            }`}>
-              {restaurant.is_approved ? 'Approved' : 'Pending'}
-            </span>
-          </div>
-
-          {restaurant.description && (
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{restaurant.description}</p>
-          )}
-
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <div className="text-center p-2 bg-muted/30 rounded-xl">
-              <div className="text-xs text-muted-foreground">Menu Items</div>
-              <div className="font-semibold">{restaurant.menu_count || 0}</div>
-            </div>
-            <div className="text-center p-2 bg-muted/30 rounded-xl">
-              <div className="text-xs text-muted-foreground">Orders</div>
-              <div className="font-semibold">{restaurant.order_count || 0}</div>
-            </div>
-            <div className="text-center p-2 bg-muted/30 rounded-xl">
-              <div className="text-xs text-muted-foreground">Rating</div>
-              <div className="font-semibold">{restaurant.average_rating?.toFixed(1) || '0.0'} ⭐</div>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <div className="space-x-2">
-              <button
-                onClick={() => {
-                  setSelectedRestaurant(restaurant);
-                  setShowEditModal(true);
-                }}
-                className="text-primary hover:text-primary/80 text-sm px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(restaurant.id)}
-                className="text-destructive hover:text-destructive/80 text-sm px-3 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-            {!restaurant.is_approved && (
-              <button
-                onClick={() => handleApprove(restaurant.id, true)}
-                className="text-success hover:text-success/80 text-sm px-3 py-1.5 rounded-lg hover:bg-success/10 transition-colors"
-              >
-                Approve
-              </button>
-            )}
-          </div>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      ))
-    ) : (
-      <div className="col-span-full text-center py-12 text-muted-foreground glass-card rounded-2xl">
-        No restaurants found. Click "Add Restaurant" to create one.
-      </div>
-    )}
-  </div>
-)}
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRestaurants.length > 0 ? (
+            filteredRestaurants.map((restaurant) => (
+              <div key={restaurant.id} className="glass-card rounded-2xl p-6 hover:shadow-glow transition-all">
+                {/* Image Preview */}
+                {restaurant.image_url && (
+                  <div className="mb-3 rounded-xl overflow-hidden h-32">
+                    <img 
+                      src={restaurant.image_url} 
+                      alt={restaurant.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-3xl">{getCuisineIcon(restaurant.cuisine_type)}</span>
+                    <div>
+                      <h3 className="font-semibold text-lg">{restaurant.name}</h3>
+                      <p className="text-sm text-muted-foreground">{restaurant.city || 'Location not set'}</p>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    restaurant.is_approved 
+                      ? 'bg-success/10 text-success' 
+                      : 'bg-warning/10 text-warning'
+                  }`}>
+                    {restaurant.is_approved ? 'Approved' : 'Pending'}
+                  </span>
+                </div>
+
+                {restaurant.description && (
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{restaurant.description}</p>
+                )}
+
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="text-center p-2 bg-muted/30 rounded-xl">
+                    <div className="text-xs text-muted-foreground">Menu Items</div>
+                    <div className="font-semibold">{restaurant.menu_count || 0}</div>
+                  </div>
+                  <div className="text-center p-2 bg-muted/30 rounded-xl">
+                    <div className="text-xs text-muted-foreground">Orders</div>
+                    <div className="font-semibold">{restaurant.order_count || 0}</div>
+                  </div>
+                  <div className="text-center p-2 bg-muted/30 rounded-xl">
+                    <div className="text-xs text-muted-foreground">Rating</div>
+                    <div className="font-semibold">{restaurant.average_rating?.toFixed(1) || '0.0'} ⭐</div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <div className="space-x-2">
+                    <button
+                      onClick={() => {
+                        setSelectedRestaurant(restaurant);
+                        setShowEditModal(true);
+                      }}
+                      className="text-primary hover:text-primary/80 text-sm px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(restaurant.id)}
+                      className="text-destructive hover:text-destructive/80 text-sm px-3 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  {!restaurant.is_approved && (
+                    <button
+                      onClick={() => handleApprove(restaurant.id, true)}
+                      className="text-success hover:text-success/80 text-sm px-3 py-1.5 rounded-lg hover:bg-success/10 transition-colors"
+                    >
+                      Approve
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12 text-muted-foreground glass-card rounded-2xl">
+              No restaurants found. Click "Add Restaurant" to create one.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Restaurant Modal */}
       {showAddModal && (
@@ -407,6 +422,7 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
   const [formData, setFormData] = useState<CreateRestaurant>({
     name: restaurant?.name || '',
     description: restaurant?.description || '',
+    image_url: restaurant?.image_url || '',
     city: restaurant?.city || '',
     cuisine_type: restaurant?.cuisine_type || '',
     is_approved: restaurant?.is_approved || false,
@@ -416,6 +432,7 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [imagePreview, setImagePreview] = useState<string | null>(restaurant?.image_url || null);
 
   const cuisineOptions = [
     'Italian', 'Chinese', 'Japanese', 'Mexican', 'Indian',
@@ -427,6 +444,11 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
     
     if (!formData.name.trim()) {
       newErrors.name = 'Restaurant name is required';
+    }
+    
+    // Optional: Validate image URL format if provided
+    if (formData.image_url && !formData.image_url.match(/^https?:\/\/.+/)) {
+      newErrors.image_url = 'Please enter a valid URL starting with http:// or https://';
     }
     
     setErrors(newErrors);
@@ -460,6 +482,12 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
 
   const handleInputChange = (field: keyof CreateRestaurant, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Update image preview if image_url changes
+    if (field === 'image_url') {
+      setImagePreview(value || null);
+    }
+    
     if (errors[field]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -492,6 +520,7 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
         
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
+            {/* Name field */}
             <div>
               <label className="block text-sm font-medium text-foreground/70 mb-1">
                 Name <span className="text-destructive">*</span>
@@ -512,6 +541,7 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
               )}
             </div>
 
+            {/* Description field */}
             <div>
               <label className="block text-sm font-medium text-foreground/70 mb-1">Description</label>
               <textarea
@@ -524,6 +554,40 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
               />
             </div>
 
+            {/* Image URL field */}
+            <div>
+              <label className="block text-sm font-medium text-foreground/70 mb-1">Image URL</label>
+              <input
+                type="url"
+                value={formData.image_url || ''}
+                onChange={(e) => handleInputChange('image_url', e.target.value)}
+                className={`w-full border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                  errors.image_url ? 'border-destructive' : 'border-border'
+                }`}
+                placeholder="https://example.com/restaurant-image.jpg"
+                disabled={isSubmitting}
+              />
+              {errors.image_url && (
+                <p className="mt-1 text-xs text-destructive">{errors.image_url}</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Optional: Add a URL for the restaurant's cover image
+              </p>
+              
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="mt-3 rounded-xl overflow-hidden h-32 border border-border">
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover"
+                    onError={() => setImagePreview(null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* City and Cuisine fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground/70 mb-1">City</label>
@@ -552,6 +616,7 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
               </div>
             </div>
 
+            {/* Approved checkbox */}
             <div className="py-2">
               <label className="flex items-center space-x-3 cursor-pointer p-2 hover:bg-muted/30 rounded-lg transition-colors">
                 <input

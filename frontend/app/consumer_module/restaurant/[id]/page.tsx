@@ -41,6 +41,8 @@ function apiToRestaurantWithMenu(api: NonNullable<Awaited<ReturnType<typeof getR
     is_active: true,
     items,
   };
+  
+  // Include image_url from the API response
   return {
     id: api.id,
     name: api.name,
@@ -52,7 +54,7 @@ function apiToRestaurantWithMenu(api: NonNullable<Awaited<ReturnType<typeof getR
     average_rating: api.average_rating ?? 0,
     total_reviews: api.total_reviews ?? 0,
     created_at: "",
-    image: undefined,
+    image: api.image_url ?? undefined,  // Map image_url from API to image field
     deliveryTime: "25-35 min",
     deliveryFee: "Free",
     distance: "",
@@ -78,10 +80,15 @@ export default function RestaurantPage({ params }: PageProps) {
     getRestaurantWithMenuFromApi(restaurantId)
       .then((api) => {
         if (cancelled) return;
-        if (api) setRestaurant(apiToRestaurantWithMenu(api));
-        else setRestaurant(getRestaurantWithMenu(restaurantId));
+        if (api) {
+          console.log('API Response:', api); // Debug log
+          setRestaurant(apiToRestaurantWithMenu(api));
+        } else {
+          setRestaurant(getRestaurantWithMenu(restaurantId));
+        }
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Error fetching restaurant:', error);
         if (!cancelled) setRestaurant(getRestaurantWithMenu(restaurantId));
       })
       .finally(() => {
@@ -601,4 +608,3 @@ function ReviewCard({ review }: { review: Review }) {
     </div>
   );
 }
-

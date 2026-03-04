@@ -2,6 +2,7 @@ export interface Restaurant {
   id: number;
   name: string;
   description: string | null;
+  image_url?: string | null;  // Added this field
   latitude: number | null;
   longitude: number | null;
   city: string | null;
@@ -25,6 +26,7 @@ export interface RestaurantStats {
 export interface CreateRestaurant {
   name: string;
   description?: string | null;
+  image_url?: string | null;  // Added this field
   latitude?: number | null;
   longitude?: number | null;
   city?: string | null;

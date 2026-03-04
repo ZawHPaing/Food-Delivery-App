@@ -22,6 +22,7 @@ class RestaurantService:
                 print(f"  - Menu count: {r.get('menu_count', 0)}")
                 print(f"  - Order count: {r.get('order_count', 0)}")
                 print(f"  - Avg rating: {r.get('average_rating', 0)}")
+                print(f"  - Image URL: {r.get('image_url', 'None')}")
             
             return restaurants
         except Exception as e:

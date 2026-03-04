@@ -251,40 +251,75 @@ class CustomerRepository:
     # ----- Public: list restaurants and restaurant with menu (for customer app browsing) -----
     @staticmethod
     def get_restaurants_list() -> List[Dict]:
-        """List restaurants (id, name, description, city, cuisine_type, average_rating, total_reviews)."""
-        response = supabase.table("restaurants") \
-            .select("id, name, description, city, cuisine_type, average_rating, total_reviews") \
-            .execute()
-        return _safe_data(response) or []
+        """List restaurants (id, name, description, city, cuisine_type, average_rating, total_reviews, image_url)."""
+        try:
+            response = supabase.table("restaurants") \
+                .select("id, name, description, city, cuisine_type, average_rating, total_reviews, image_url") \
+                .eq("is_approved", True) \
+                .execute()
+            
+            data = _safe_data(response) or []
+            print(f"Fetched {len(data)} restaurants from database")
+            
+            # Log first restaurant to verify image_url
+            if data:
+                print(f"First restaurant: {data[0].get('name')} - image_url: {data[0].get('image_url')}")
+                
+            return data
+        except Exception as e:
+            print(f"Error in get_restaurants_list: {e}")
+            return []
 
     @staticmethod
     def get_restaurant_with_menu(restaurant_id: int) -> Optional[Dict]:
         """Get one restaurant and its menu items (via menus). Returns restaurant + menus with items."""
-        restaurant_resp = supabase.table("restaurants") \
-            .select("*") \
-            .eq("id", restaurant_id) \
-            .maybe_single() \
-            .execute()
-        restaurant = _safe_data(restaurant_resp)
-        if not restaurant:
+        try:
+            # Get restaurant
+            restaurant_resp = supabase.table("restaurants") \
+                .select("*") \
+                .eq("id", restaurant_id) \
+                .maybe_single() \
+                .execute()
+            restaurant = _safe_data(restaurant_resp)
+            
+            if not restaurant:
+                print(f"Restaurant {restaurant_id} not found")
+                return None
+            
+            print(f"Restaurant found: {restaurant.get('name')} - image_url: {restaurant.get('image_url')}")
+            
+            # Get menus
+            menus_resp = supabase.table("menus") \
+                .select("id, name, restaurant_id") \
+                .eq("restaurant_id", restaurant_id) \
+                .execute()
+            menus = _safe_data(menus_resp) or []
+            menu_ids = [m["id"] for m in menus]
+            
+            # Get menu items
+            menu_items = []
+            if menu_ids:
+                items_resp = supabase.table("menu_items") \
+                    .select("id, menu_id, name, description, price_cents, is_available, image_url") \
+                    .in_("menu_id", menu_ids) \
+                    .execute()
+                menu_items = _safe_data(items_resp) or []
+                print(f"Found {len(menu_items)} menu items")
+            
+            # Build response
+            result = {
+                **restaurant,
+                "menus": menus,
+                "menu_items": menu_items,
+            }
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error in get_restaurant_with_menu for {restaurant_id}: {e}")
+            import traceback
+            traceback.print_exc()
             return None
-        menus_resp = supabase.table("menus") \
-            .select("id, name, restaurant_id") \
-            .eq("restaurant_id", restaurant_id) \
-            .execute()
-        menu_ids = [m["id"] for m in (_safe_data(menus_resp) or [])]
-        if not menu_ids:
-            return {**restaurant, "menus": [], "menu_items": []}
-        items_resp = supabase.table("menu_items") \
-            .select("id, menu_id, name, description, price_cents, is_available, image_url") \
-            .in_("menu_id", menu_ids) \
-            .execute()
-        items_list = _safe_data(items_resp) or []
-        return {
-            **restaurant,
-            "menus": _safe_data(menus_resp) or [],
-            "menu_items": items_list,
-        }
 
     @staticmethod
     def get_menu_items_by_ids(menu_item_ids: List[int]) -> Dict[int, Dict]:

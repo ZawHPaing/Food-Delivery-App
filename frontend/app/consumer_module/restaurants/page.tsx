@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { restaurants as dbRestaurants } from "@/data/restaurants";
 import { getRestaurantsFromApi } from "@/lib/discoveryApi";
 import SearchBar from "@/components/ui/SearchBar";
@@ -68,6 +68,13 @@ export default function RestaurantsPage() {
   useEffect(() => {
     getRestaurantsFromApi().then((apiList) => {
       if (apiList.length > 0) {
+        console.log('API Restaurants:', apiList);
+        
+        // Log which restaurants have images
+        apiList.forEach(r => {
+          console.log(`Restaurant ${r.id} - ${r.name}: image_url = ${r.image_url || 'none'}`);
+        });
+        
         setRestaurants(
           apiList.map((r) => ({
             id: r.id,
@@ -80,6 +87,7 @@ export default function RestaurantsPage() {
             average_rating: r.average_rating ?? 0,
             total_reviews: r.total_reviews ?? 0,
             created_at: "",
+            image: r.image_url ?? undefined,
             deliveryTime: "25-35 min",
             deliveryFee: "Free",
             distance: "",
@@ -175,7 +183,7 @@ export default function RestaurantsPage() {
   // Sort restaurants
   const sortedRestaurants = [...filteredRestaurants].sort((a, b) => {
     switch (sortBy) {
-      case "rating": // Map "rating" to rating-desc if needed, or handle both
+      case "rating":
       case "rating-desc":
         return b.average_rating - a.average_rating;
       case "rating-asc":
@@ -191,7 +199,7 @@ export default function RestaurantsPage() {
         return distBDesc - distADesc;
       case "name":
         return a.name.localeCompare(b.name);
-      case "reviews": // Not in SortOption but was in original code
+      case "reviews":
       case "popularity":
         return b.total_reviews - a.total_reviews;
       case "delivery-time-asc":
@@ -348,7 +356,7 @@ export default function RestaurantsPage() {
             {sortedRestaurants.map((restaurant) => (
               <Link key={restaurant.id} href={`/consumer_module/restaurant/${restaurant.id}`}>
                 <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group h-full">
-                  {/* Image */}
+                  {/* Image Section - Shows actual image or emoji fallback */}
                   <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-[#e4002b] to-[#ff6600]">
                     {restaurant.image ? (
                       <Image
@@ -357,17 +365,33 @@ export default function RestaurantsPage() {
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-300"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                        onError={(e) => {
+                          // If image fails to load, hide it and show fallback
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          // Show the emoji fallback by setting a data attribute
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-full h-full flex items-center justify-center text-white';
+                            fallback.innerHTML = '<span class="text-6xl">🍽️</span>';
+                            parent.appendChild(fallback);
+                          }
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-white">
                         <span className="text-6xl">🍽️</span>
                       </div>
                     )}
+                    
+                    {/* Open Status Badge */}
                     {restaurant.isOpen && (
                       <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
                         Open
                       </div>
                     )}
+                    
+                    {/* Distance Badge */}
                     {restaurant.distance && (
                       <div className="absolute top-3 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs">
                         {restaurant.distance}
@@ -422,4 +446,3 @@ export default function RestaurantsPage() {
     </div>
   );
 }
-

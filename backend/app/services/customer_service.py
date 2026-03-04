@@ -271,9 +271,22 @@ class CustomerService:
     @staticmethod
     def get_restaurants_list() -> List[dict]:
         """List approved restaurants for customer app."""
-        return CustomerRepository.get_restaurants_list()
+        try:
+            restaurants = CustomerRepository.get_restaurants_list()
+            print(f"CustomerService: Retrieved {len(restaurants)} restaurants")
+            return restaurants
+        except Exception as e:
+            print(f"Error in get_restaurants_list: {e}")
+            return []
 
     @staticmethod
     def get_restaurant_with_menu(restaurant_id: int) -> Optional[dict]:
         """Get restaurant with menus and menu items for browsing/ordering."""
-        return CustomerRepository.get_restaurant_with_menu(restaurant_id)
+        try:
+            result = CustomerRepository.get_restaurant_with_menu(restaurant_id)
+            if result:
+                print(f"CustomerService: Retrieved restaurant {restaurant_id} with image_url: {result.get('image_url')}")
+            return result
+        except Exception as e:
+            print(f"Error in get_restaurant_with_menu for {restaurant_id}: {e}")
+            return None
