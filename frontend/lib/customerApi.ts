@@ -60,6 +60,26 @@ export async function updateProfile(data: {
   });
 }
 
+export async function updateEmail(data: {
+  new_email: string;
+}): Promise<CustomerProfile> {
+  return customerFetch<CustomerProfile>("/customer/profile/email", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function changePassword(data: {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}): Promise<{ message: string }> {
+  return customerFetch<{ message: string }>("/customer/profile/password", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
 // ----- Addresses -----
 export interface AddressRecord {
   id: number;

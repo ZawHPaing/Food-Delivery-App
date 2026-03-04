@@ -15,6 +15,8 @@ from ..models.customer_models import (
     NotificationResponse,
     CustomerProfileResponse,
     CustomerProfileUpdate,
+    EmailUpdateRequest,
+    ChangePasswordRequest,
     VoucherValidateResponse,
 )
 from ..services.customer_service import CustomerService
@@ -58,6 +60,26 @@ def update_profile(data: CustomerProfileUpdate, user_id: int = Depends(get_curre
     if not profile:
         raise HTTPException(status_code=404, detail="Customer profile not found")
     return profile
+
+
+@router.patch("/profile/email", response_model=CustomerProfileResponse)
+def update_email(data: EmailUpdateRequest, user_id: int = Depends(get_current_customer_id)):
+    """Update customer email. Email must be valid and not already taken."""
+    profile, error = CustomerService.update_email(user_id, data.new_email)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    return profile
+
+
+@router.patch("/profile/password")
+def change_password(data: ChangePasswordRequest, user_id: int = Depends(get_current_customer_id)):
+    """Change customer password. Must provide correct current password."""
+    error = CustomerService.change_password(
+        user_id, data.current_password, data.new_password, data.confirm_password
+    )
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    return {"message": "Password changed successfully"}
 
 
 # ----- Addresses -----
