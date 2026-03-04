@@ -50,9 +50,10 @@ export default function ProfilePage() {
   }, [user]);
 
   // Safely read deliveries and COD cash from user
-  const deliveries = (user as any)?.deliveries as Array<{ delivery_fee_cents?: number }> ?? [];
-  const deliveriesCount = deliveries.length;
-  const earningsCents = deliveries.reduce(
+  const deliveries = (user as any)?.deliveries as Array<{ status: string; delivery_fee_cents?: number }> ?? [];
+  const completedDeliveries = deliveries.filter(d => d.status === 'delivered');
+  const deliveriesCount = completedDeliveries.length;
+  const earningsCents = completedDeliveries.reduce(
     (sum: number, d: { delivery_fee_cents?: number }) => sum + (d.delivery_fee_cents ?? 0),
     0
   );

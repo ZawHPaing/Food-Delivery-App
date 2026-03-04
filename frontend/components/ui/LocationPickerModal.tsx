@@ -30,6 +30,7 @@ export function LocationPickerModal({
 }: LocationPickerModalProps) {
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     street: "",
     city: "",
@@ -39,6 +40,12 @@ export function LocationPickerModal({
     latitude: null as number | null,
     longitude: null as number | null,
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowForm(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (existingAddress) {
@@ -60,17 +67,8 @@ export function LocationPickerModal({
   };
 
   const handleUsePreviousLocation = () => {
-    if (existingAddress) {
-      setFormData({
-        street: existingAddress.street || "",
-        city: existingAddress.city || "",
-        state: existingAddress.state || "",
-        postal_code: existingAddress.postal_code || "",
-        country: existingAddress.country || "",
-        latitude: existingAddress.latitude || null,
-        longitude: existingAddress.longitude || null,
-      });
-    }
+    // Just close the modal as requested
+    onClose();
   };
 
   const handleGetCurrentLocation = () => {
@@ -84,6 +82,7 @@ export function LocationPickerModal({
       async (position) => {
         const { latitude, longitude } = position.coords;
         setFormData((prev) => ({ ...prev, latitude, longitude }));
+        setShowForm(true);
         
         // Optional: Reverse geocoding if we had a token and utility
         try {
@@ -117,6 +116,7 @@ export function LocationPickerModal({
       (error) => {
         console.error("Geolocation error:", error);
         setGeoLoading(false);
+        setShowForm(true); // Still show form so they can enter manually
         alert("Unable to retrieve your location. Please enter it manually.");
       }
     );
@@ -148,120 +148,122 @@ export function LocationPickerModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="grid gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12 border-dashed border-2 hover:border-primary hover:text-primary transition-all"
-              onClick={handleGetCurrentLocation}
-              disabled={geoLoading}
-            >
-              {geoLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Navigation className="w-4 h-4" />
-              )}
-              {geoLoading ? "Fetching location..." : "Use Current Location"}
-            </Button>
-
-            {existingAddress && (
+        <div className="space-y-4 py-4">
+          {!showForm ? (
+            <div className="grid gap-3">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full flex items-center justify-center gap-2 h-12 border-dashed border-2 hover:border-blue-500 hover:text-blue-500 transition-all"
-                onClick={handleUsePreviousLocation}
+                className="w-full h-14 flex items-center justify-center gap-3 border-2 hover:border-primary hover:text-primary transition-all text-base font-semibold"
+                onClick={handleGetCurrentLocation}
+                disabled={geoLoading}
               >
-                <History className="w-4 h-4" />
-                Use Previous Location
+                {geoLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Navigation className="w-5 h-5" />
+                )}
+                {geoLoading ? "Fetching location..." : "Use Current Location"}
               </Button>
-            )}
-          </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              {existingAddress && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-14 flex items-center justify-center gap-3 border-2 hover:border-blue-500 hover:text-blue-500 transition-all text-base font-semibold"
+                  onClick={handleUsePreviousLocation}
+                >
+                  <History className="w-5 h-5" />
+                  Use Previous Location
+                </Button>
+              )}
+              
+              <p className="text-center text-xs text-muted-foreground mt-2">
+                Selecting previous location will use your last saved address.
+              </p>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or enter manually</span>
-            </div>
-          </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="street">Street Address</Label>
+                  <Input
+                    id="street"
+                    name="street"
+                    placeholder="123 Main St"
+                    value={formData.street}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      name="city"
+                      placeholder="City"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="state">State / Region</Label>
+                    <Input
+                      id="state"
+                      name="state"
+                      placeholder="State"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="postal_code">Postal Code</Label>
+                    <Input
+                      id="postal_code"
+                      name="postal_code"
+                      placeholder="12345"
+                      value={formData.postal_code}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input
+                      id="country"
+                      name="country"
+                      placeholder="Country"
+                      value={formData.country}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {formData.latitude && (
+                <div className="text-[10px] text-muted-foreground bg-slate-50 p-2 rounded border border-slate-100 italic">
+                  GPS Coordinates: {formData.latitude.toFixed(6)}, {formData.longitude?.toFixed(6)}
+                </div>
+              )}
 
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="street">Street Address</Label>
-              <Input
-                id="street"
-                name="street"
-                placeholder="123 Main St"
-                value={formData.street}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  name="city"
-                  placeholder="City"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="state">State / Region</Label>
-                <Input
-                  id="state"
-                  name="state"
-                  placeholder="State"
-                  value={formData.state}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="postal_code">Postal Code</Label>
-                <Input
-                  id="postal_code"
-                  name="postal_code"
-                  placeholder="12345"
-                  value={formData.postal_code}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  name="country"
-                  placeholder="Country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-          
-          {formData.latitude && (
-            <div className="text-[10px] text-muted-foreground bg-slate-50 p-2 rounded border border-slate-100 italic">
-              GPS Coordinates: {formData.latitude.toFixed(6)}, {formData.longitude?.toFixed(6)}
-            </div>
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="ghost" onClick={() => setShowForm(false)} className="mr-auto">
+                  Back
+                </Button>
+                <Button type="submit" className="flex-1 h-11" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Location
+                </Button>
+              </DialogFooter>
+            </form>
           )}
-
-          <DialogFooter className="mt-6">
-            <Button type="submit" className="w-full h-11" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Location
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
