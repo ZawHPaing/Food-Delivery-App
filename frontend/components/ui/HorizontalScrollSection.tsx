@@ -274,13 +274,19 @@ export default function HorizontalScrollSection({
                 >
                   <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group">
                     <div className="relative h-40 md:h-44 w-full overflow-hidden bg-gray-100">
-                      <Image
-                        src={food.image}
-                        alt={food.name}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-300"
-                        sizes="(max-width: 768px) 256px, 288px"
-                      />
+                      {food.image ? (
+                        <Image
+                          src={food.image}
+                          alt={food.name}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                          sizes="(max-width: 768px) 256px, 288px"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                          <span className="text-5xl">🍽️</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-4">
@@ -324,7 +330,7 @@ export default function HorizontalScrollSection({
               (items as Restaurant[]).map((restaurant) => (
                 <Link
                   key={restaurant.id}
-                  href={`/restaurant/${restaurant.id}`}
+                  href={`/consumer_module/restaurant/${restaurant.id}`}
                   className="flex-shrink-0 w-64 md:w-72"
                 >
                   <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group">

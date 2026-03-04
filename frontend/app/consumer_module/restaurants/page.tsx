@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { restaurants as dbRestaurants } from "@/data/restaurants";
 import { getRestaurantsFromApi } from "@/lib/discoveryApi";
 import SearchBar from "@/components/ui/SearchBar";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
@@ -12,7 +11,8 @@ import type { Restaurant } from "@/types";
 type QuickFilterOption = "all" | "fast-food" | "pizza" | "asian" | "coffee" | "mexican";
 
 export default function RestaurantsPage() {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(dbRestaurants);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>("rating");
   const [activeFilters, setActiveFilters] = useState<FilterOptions>({
     cuisines: [],
@@ -66,8 +66,9 @@ export default function RestaurantsPage() {
   };
 
   useEffect(() => {
-    getRestaurantsFromApi().then((apiList) => {
-      if (apiList.length > 0) {
+    setLoading(true);
+    getRestaurantsFromApi()
+      .then((apiList) => {
         setRestaurants(
           apiList.map((r) => ({
             id: r.id,
@@ -86,8 +87,8 @@ export default function RestaurantsPage() {
             isOpen: true,
           }))
         );
-      }
-    });
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   // Filter restaurants
@@ -319,6 +320,9 @@ export default function RestaurantsPage() {
 
       {/* Results Count */}
       <div className="container mx-auto px-4 py-6">
+        {loading ? (
+          <p className="text-gray-600">Loading restaurants…</p>
+        ) : (
         <p className="text-gray-600">
           Showing <span className="font-semibold text-gray-900">{sortedRestaurants.length}</span>{" "}
           restaurants
@@ -329,11 +333,14 @@ export default function RestaurantsPage() {
             </span>
           )}
         </p>
+        )}
       </div>
 
       {/* Restaurants Grid */}
       <div className="container mx-auto px-4 pb-12">
-        {sortedRestaurants.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-16 text-gray-500">Loading…</div>
+        ) : sortedRestaurants.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
               <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

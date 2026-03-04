@@ -1,3 +1,4 @@
+import Link from "next/link";
 import RestaurantCard from "./RestaurantCard";
 
 interface Restaurant {
@@ -29,9 +30,9 @@ export default function RestaurantGrid({
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
           {showViewAll && (
-            <button className="text-[#e4002b] font-semibold hover:text-[#ff6600] transition-colors">
+            <Link href="/consumer_module/restaurants" className="text-[#e4002b] font-semibold hover:text-[#ff6600] transition-colors">
               View All →
-            </button>
+            </Link>
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
