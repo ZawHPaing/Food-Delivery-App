@@ -8,8 +8,7 @@ import RestaurantGrid from "@/components/ui/RestaurantGrid";
 import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import EventBannerSlider from "@/components/ui/EventBannerSlider";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
-import { restaurants as dbRestaurants, menuItemsByRestaurant } from "@/data/restaurants";
-import { getRestaurantsFromApi } from "@/lib/discoveryApi";
+import { getRestaurantsFromApi, getRestaurantWithMenuFromApi } from "@/lib/discoveryApi";
 
 const transformRestaurant = (r: { id: number; name: string; cuisine_type?: string; average_rating?: number; deliveryTime?: string; deliveryFee?: string; distance?: string; image?: string }, isPromoted = false) => ({
   id: String(r.id),
@@ -61,23 +60,6 @@ const offers = [
   },
 ];
 
-// Popular Foods from menu items (mock fallback)
-const popularFoodsFromMock = Object.entries(menuItemsByRestaurant)
-  .flatMap(([restaurantId, items]) =>
-    items
-      .filter((item) => item.isPopular && item.image)
-      .map((item, index) => ({
-        id: `f${item.id}`,
-        name: item.name,
-        description: item.description,
-        rating: 4.5 + (index % 5) * 0.1,
-        price: `$${(item.price_cents / 100).toFixed(2)}`,
-        image: item.image as string,
-        link: `/consumer_module/restaurant/${restaurantId}`,
-      }))
-  )
-  .slice(0, 6);
-
 // Vouchers data
 const vouchers = [
   {
@@ -109,8 +91,28 @@ const vouchers = [
   },
 ];
 
+type RestaurantRow = {
+  id: number;
+  name: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  cuisine_type?: string;
+  average_rating?: number;
+  total_reviews?: number;
+  created_at?: string;
+  deliveryTime?: string;
+  deliveryFee?: string;
+  distance?: string;
+  image?: string;
+  isOpen?: boolean;
+};
+
 export default function Home() {
-  const [restaurantsList, setRestaurantsList] = useState(dbRestaurants);
+  const [restaurantsList, setRestaurantsList] = useState<RestaurantRow[]>([]);
+  const [popularFoods, setPopularFoods] = useState<{ id: string; name: string; description: string; rating: number; price: string; image?: string; link: string }[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [activeFilters, setActiveFilters] = useState<FilterOptions>({
@@ -150,29 +152,47 @@ export default function Home() {
   };
 
   useEffect(() => {
-    getRestaurantsFromApi().then((apiList) => {
-      if (apiList.length > 0) {
-        setRestaurantsList(
-          apiList.map((r) => ({
-            ...r,
-            id: r.id,
-            name: r.name,
-            description: r.description ?? "",
-            latitude: 0,
-            longitude: 0,
-            city: r.city ?? "",
-            cuisine_type: r.cuisine_type ?? "",
-            average_rating: r.average_rating ?? 0,
-            total_reviews: r.total_reviews ?? 0,
-            created_at: "",
-            deliveryTime: "25-35 min",
-            deliveryFee: "Free",
-            distance: "",
-            isOpen: true,
-          }))
-        );
-      }
-    });
+    setLoading(true);
+    getRestaurantsFromApi()
+      .then((apiList) => {
+        const rows: RestaurantRow[] = apiList.map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description ?? "",
+          latitude: 0,
+          longitude: 0,
+          city: r.city ?? "",
+          cuisine_type: r.cuisine_type ?? "",
+          average_rating: r.average_rating ?? 0,
+          total_reviews: r.total_reviews ?? 0,
+          created_at: "",
+          deliveryTime: "25-35 min",
+          deliveryFee: "Free",
+          distance: "",
+          isOpen: true,
+        }));
+        setRestaurantsList(rows);
+        if (apiList.length > 0) {
+          return getRestaurantWithMenuFromApi(apiList[0].id);
+        }
+        return null;
+      })
+      .then((firstRestaurant) => {
+        if (firstRestaurant?.menu_items?.length) {
+          setPopularFoods(
+            firstRestaurant.menu_items.slice(0, 6).map((item) => ({
+              id: `f${item.id}`,
+              name: item.name,
+              description: item.description ?? "",
+              rating: 4.5,
+              price: `$${(item.price_cents / 100).toFixed(2)}`,
+              image: item.image_url ?? undefined,
+              link: `/consumer_module/restaurant/${firstRestaurant.id}`,
+            }))
+          );
+        }
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const featuredRestaurants = restaurantsList.slice(0, 4).map((r, i) => transformRestaurant(r, i < 3));
@@ -191,7 +211,6 @@ export default function Home() {
     })
     .slice(0, 5)
     .map((r) => ({ ...transformRestaurant(r), badge: "NEAR", image: r.image }));
-  const popularFoods = popularFoodsFromMock;
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -234,6 +253,13 @@ export default function Home() {
       
       {/* Main Page Content */}
       <main className="py-6">
+        {loading && (
+          <div className="container mx-auto px-4 py-8 text-center text-gray-500">
+            Loading restaurants…
+          </div>
+        )}
+        {!loading && (
+        <>
         {/* Event Banner Slider */}
         <section className="mb-8">
           <div className="container mx-auto px-4">
@@ -305,6 +331,8 @@ export default function Home() {
             />
           </div>
         </section>
+        </>
+        )}
       </main>
 
       {/* Footer */}

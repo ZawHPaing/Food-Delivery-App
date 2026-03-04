@@ -10,11 +10,6 @@ import CartSidebar from "@/components/ui/CartSidebar";
 import { useCart } from "@/app/_providers/CartProvider";
 import { formatPrice } from "@/types";
 import type { Category, MenuItemWithCategory, Review } from "@/types";
-import {
-  getRestaurantWithMenu,
-  getPopularItems,
-  getRestaurantReviews,
-} from "@/data/restaurants";
 import { getRestaurantWithMenuFromApi } from "@/lib/discoveryApi";
 import type { RestaurantWithMenu } from "@/types";
 
@@ -115,9 +110,9 @@ export default function RestaurantPage({ params }: PageProps) {
     notFound();
   }
 
-  const popularItems = getPopularItems(restaurantId);
-  const reviews = getRestaurantReviews(restaurantId);
   const menu = restaurant.menus[0];
+  const popularItems = menu?.items?.slice(0, 6) ?? [];
+  const reviews: Review[] = [];
   const categories = restaurant.categories;
 
   // Group items by category
