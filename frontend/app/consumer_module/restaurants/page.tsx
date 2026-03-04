@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { restaurants as dbRestaurants } from "@/data/restaurants";
 import { getRestaurantsFromApi } from "@/lib/discoveryApi";
 import SearchBar from "@/components/ui/SearchBar";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
@@ -67,8 +66,9 @@ export default function RestaurantsPage() {
   };
 
   useEffect(() => {
-    getRestaurantsFromApi().then((apiList) => {
-      if (apiList.length > 0) {
+    setLoading(true);
+    getRestaurantsFromApi()
+      .then((apiList) => {
         console.log('API Restaurants:', apiList);
         
         // Log which restaurants have images
@@ -76,9 +76,6 @@ export default function RestaurantsPage() {
           console.log(`Restaurant ${r.id} - ${r.name}: image_url = ${r.image_url || 'none'}`);
         });
         
-    setLoading(true);
-    getRestaurantsFromApi()
-      .then((apiList) => {
         setRestaurants(
           apiList.map((r) => ({
             id: r.id,
@@ -98,6 +95,10 @@ export default function RestaurantsPage() {
             isOpen: true,
           }))
         );
+      })
+      .catch((error) => {
+        console.error('Error fetching restaurants:', error);
+        setRestaurants([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -334,23 +335,26 @@ export default function RestaurantsPage() {
         {loading ? (
           <p className="text-gray-600">Loading restaurants…</p>
         ) : (
-        <p className="text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{sortedRestaurants.length}</span>{" "}
-          restaurants
-          {activeFilters.cuisines.length > 0 && (
-            <span>
-              {" "}
-              in <span className="font-semibold text-[#e4002b]">{activeFilters.cuisines.join(", ")}</span>
-            </span>
-          )}
-        </p>
+          <p className="text-gray-600">
+            Showing <span className="font-semibold text-gray-900">{sortedRestaurants.length}</span>{" "}
+            restaurants
+            {activeFilters.cuisines.length > 0 && (
+              <span>
+                {" "}
+                in <span className="font-semibold text-[#e4002b]">{activeFilters.cuisines.join(", ")}</span>
+              </span>
+            )}
+          </p>
         )}
       </div>
 
       {/* Restaurants Grid */}
       <div className="container mx-auto px-4 pb-12">
         {loading ? (
-          <div className="text-center py-16 text-gray-500">Loading…</div>
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e4002b] mx-auto"></div>
+            <p className="text-gray-500 mt-4">Loading restaurants…</p>
+          </div>
         ) : sortedRestaurants.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
@@ -378,7 +382,7 @@ export default function RestaurantsPage() {
                         onError={(e) => {
                           // If image fails to load, hide it and show fallback
                           (e.target as HTMLImageElement).style.display = 'none';
-                          // Show the emoji fallback by setting a data attribute
+                          // Show the emoji fallback
                           const parent = (e.target as HTMLImageElement).parentElement;
                           if (parent) {
                             const fallback = document.createElement('div');

@@ -72,23 +72,33 @@ export default function RestaurantPage({ params }: PageProps) {
 
   useEffect(() => {
     let cancelled = false;
-    getRestaurantWithMenuFromApi(restaurantId)
-      .then((api) => {
+    
+    const fetchRestaurant = async () => {
+      try {
+        const api = await getRestaurantWithMenuFromApi(restaurantId);
         if (cancelled) return;
+        
         if (api) {
           console.log('API Response:', api); // Debug log
           setRestaurant(apiToRestaurantWithMenu(api));
         } else {
-          setRestaurant(getRestaurantWithMenu(restaurantId));
+          // If no API data, set to null which will trigger notFound
+          setRestaurant(null);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('Error fetching restaurant:', error);
-        if (!cancelled) setRestaurant(getRestaurantWithMenu(restaurantId));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        if (!cancelled) {
+          setRestaurant(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchRestaurant();
+    
     return () => { cancelled = true; };
   }, [restaurantId]);
 
