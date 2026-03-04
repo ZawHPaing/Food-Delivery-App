@@ -1,0 +1,213 @@
+"use client";
+
+import { useDeliveryContext } from '@/app/_providers/DeliveryProvider';
+import { StatusToggle } from '@/components/delivery/StatusToggle';
+import { IncomingRequest } from '@/components/delivery/IncomingRequest';
+import { ActiveOrderCard } from '@/components/delivery/ActiveOrderCard';
+import { MapPlaceholder } from '@/components/delivery/MapPlaceholder';
+import { Package, Bike, GripHorizontal } from 'lucide-react';
+import { DeliveryNavbar } from '@/components/delivery/DeliveryNavbar';
+import { useState, useEffect } from 'react';
+import { DriverStatus } from '@/types/delivery';
+import { motion } from 'framer-motion';
+import LoginOverlay from '@/components/ui/LoginOverlay';
+import SignupOverlay from '@/components/ui/SignupOverlay';
+import { useAuth } from '@/app/_providers/AuthProvider';
+
+export default function Dashboard() {
+  const {
+    status,
+    incomingRequests,
+    activeOrder,
+    messages,
+    toggleOnline,
+    acceptOrder,
+    declineOrder,
+    arrivedAtShop,
+    pickupOrder,
+    completeOrder,
+    sendMessage,
+    currentLocation,
+  } = useDeliveryContext();
+
+  const [mounted, setMounted] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const { isLoggedIn, user } = useAuth();
+  const [destinationCoords, setDestinationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [destinationType, setDestinationType] = useState<'shop' | 'customer' | null>(null);
+  const [startCoords, setStartCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [sheetYPosition, setSheetYPosition] = useState('60%'); // Controls the draggable sheet's vertical position
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (activeOrder || incomingRequests.length > 0) {
+      setSheetYPosition('0%');
+    }
+  }, [activeOrder, incomingRequests.length]);
+console.log(status)
+  return (
+    <div className="h-screen overflow-hidden flex flex-col bg-slate-50">
+      <DeliveryNavbar
+        onLoginClick={() => setShowLogin(true)}
+        onSignupClick={() => setShowSignup(true)}
+      />
+
+      {/* Main content - Fixed area for Toggle and Map */}
+      <main className="flex-1 overflow-hidden flex flex-col max-w-2xl mx-auto w-full relative">
+        <div className="p-4 space-y-4">
+          {/* Status Toggle */}
+          {status === "offline"  &&
+               <StatusToggle status={status} onToggle={toggleOnline} />
+          }
+
+          {/* Map View */}
+          <div className="animate-enter" style={{ animationDelay: '0.1s' }}>
+            <MapPlaceholder 
+              riderLocation={currentLocation} 
+              destinationCoords={destinationCoords} 
+              destinationType={destinationType} 
+              startCoords={startCoords}
+            />
+          </div>
+        </div>
+
+        {/* Draggable Requests Sheet */}
+        <motion.div
+          initial={{ y: '60%' }}
+          animate={{ y: sheetYPosition }}
+          drag="y"
+          dragConstraints={{ top: -300, bottom: 0 }}
+          dragElastic={0.1}
+          className="absolute left-0 right-0 z-40 bg-white rounded-t-[3rem] shadow-[0_-8px_30px_rgba(0,0,0,0.1)] border-t border-border/50 flex flex-col"
+          style={{ 
+            top: '420px', 
+            height: 'calc(100vh - 120px)',
+            touchAction: 'none' 
+          }}
+        >
+          {/* Drag Handle */}
+          <div className="w-full flex flex-col items-center py-4 cursor-grab active:cursor-grabbing">
+            <div className="w-12 h-1.5 bg-muted rounded-full mb-2" />
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <GripHorizontal className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">
+                {activeOrder ? 'Current Order' : `Requests (${incomingRequests.length})`}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 pb-32 space-y-6">
+            {/* Active Order */}
+            {activeOrder && (
+              <section className="animate-enter">
+                <div className="flex items-center justify-between mb-4 px-2">
+                  <h2 className="text-lg font-bold text-foreground">Current Order</h2>
+                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    Order #{activeOrder.id.slice(-4)}
+                  </span>
+                </div>
+                <ActiveOrderCard
+                  order={activeOrder}
+                  messages={messages}
+                  onArrivedAtShop={arrivedAtShop}
+                  onPickedUp={pickupOrder}
+                  onComplete={completeOrder}
+                  onSendMessage={sendMessage}
+                  onNavigateToDestination={(lat, lng, type, start) => {
+                    console.log("[page.tsx] Setting destination:", lat, lng, type, "Start:", start);
+                    setDestinationCoords({ latitude: lat, longitude: lng });
+                    setDestinationType(type);
+                    setStartCoords(start || null);
+                    setSheetYPosition('4%'); // Collapse the sheet to 30% height
+                  }}
+                />
+              </section>
+            )}
+
+            {/* Incoming Requests */}
+            {status === 'online' && !activeOrder && incomingRequests.length > 0 && (
+              <section className="space-y-4 animate-enter">
+                <div className="flex items-center justify-between px-2">
+                  <h2 className="text-lg font-bold text-foreground">
+                    New Requests <span className="text-primary">({incomingRequests.length})</span>
+                  </h2>
+                </div>
+                <div className="space-y-4">
+                  {incomingRequests.map((request, index) => (
+                    <IncomingRequest
+                      key={request.id}
+                      request={request}
+                      queuePosition={index + 1}
+                      onAccept={() => acceptOrder(request)}
+                      onDecline={() => declineOrder(request.id)}
+                      riderLocation={currentLocation}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Empty / Unavailable: same className on server and client to avoid hydration mismatch */}
+            {!mounted ? (
+              <section className="py-12 text-center">
+                <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto mb-6 flex items-center justify-center">
+                  <Bike className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              </section>
+            ) : !activeOrder && incomingRequests.length === 0 && status === 'online' ? (
+              <section className="py-12 text-center">
+                <div className="relative w-24 h-24 mx-auto mb-6">
+                  <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping opacity-20" />
+                  <div className="relative w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center border-2 border-white shadow-sm">
+                    <Package className="w-10 h-10 text-primary animate-bounce" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">
+                  Scanning for orders...
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">
+                  New requests will appear here as soon as they are available.
+                </p>
+              </section>
+            ) : status === 'offline' ? (
+              <section className="py-12 text-center opacity-60">
+                <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto mb-6 flex items-center justify-center">
+                  <Bike className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground mb-2">
+                  Unavailable
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Turn on your availability to start working.
+                </p>
+              </section>
+            ) : null}
+          </div>
+        </motion.div>
+      </main>
+      {/* Auth Modals */}
+      <LoginOverlay
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSwitchToSignup={() => {
+          setShowLogin(false);
+          setShowSignup(true);
+        }}
+        onLoginSuccess={() => {
+          setShowLogin(false);
+        }}
+      />
+      <SignupOverlay
+        isOpen={showSignup}
+        onClose={() => setShowSignup(false)}
+        onSwitchToLogin={() => {
+          setShowSignup(false);
+          setShowLogin(true);
+        }}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,22 @@
+-- REFERENCE ONLY: Do not run. This documents the public schema the customer backend uses.
+-- Your Supabase project already has these tables. Backend app/repositories/customer_repo.py
+-- and app/services/customer_service.py read/write directly to Supabase as below.
+--
+-- Conventions for this database:
+--   - Restaurants are read-only (not created/updated/deleted by this app).
+--   - orders has no discount_cents or voucher_code columns; total_cents reflects any discount.
+--   - vouchers table is optional; if missing, voucher validation returns invalid.
+--
+-- Customer module uses:
+--   users (id, email, password_hash, first_name, last_name, phone, user_type, created_at, updated_at)
+--   addresses (id, user_id, street, city, state, postal_code, country, label, latitude, longitude, is_default)
+--   orders (id, user_id, restaurant_id, status, subtotal_cents, tax_cents, delivery_fee_cents, total_cents, delivery_address, created_at, updated_at, delivery_latitude, delivery_longitude)
+--   order_items (id, order_id, menu_item_id, quantity, price_cents, special_instructions)
+--   payments (id, order_id, user_id, status, amount_cents, payment_method, transaction_id, paid_at)
+--   restaurants (id, name, ...) -- read-only
+--   menus, menu_items (id, menu_id, name, description, price_cents, is_available, image_url)
+--   reviews (id, order_id, reviewer_id, restaurant_id, rating, comment)
+--   notifications (id, user_id, type, title, message, channel, body, sent_at)
+--
+-- Auth (customer login/register) uses: users only.
+-- Customer routes: /customer/profile, /customer/addresses, /customer/orders, /customer/payments, /customer/reviews, /customer/notifications.
