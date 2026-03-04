@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Tuple
 from ..repositories.customer_repo import CustomerRepository
 from ..repositories.user_repo import UserRepository
 from ..repositories.voucher_repo import VoucherRepository
+from ..core.security import verify_password, hash_password
 from ..models.customer_models import (
     AddressResponse,
     PaymentResponse,
@@ -38,6 +39,40 @@ class CustomerService:
         if user_up:
             UserRepository.update_user(user_id, user_up)
         return CustomerService.get_profile(user_id)
+
+    @staticmethod
+    def update_email(user_id: int, new_email: str) -> Tuple[Optional[CustomerProfileResponse], Optional[str]]:
+        """Update customer email. Returns (profile, None) on success or (None, error) on failure."""
+        # Check if the new email is already taken by another user
+        existing = None
+        try:
+            existing = UserRepository.find_user_by_email(new_email)
+        except Exception:
+            pass
+        if existing and existing.get("id") != user_id:
+            return None, "Email already in use by another account"
+        # Check if already their current email
+        if existing and existing.get("id") == user_id:
+            return None, "This is already your current email"
+        # Update
+        UserRepository.update_user(user_id, {"email": new_email})
+        return CustomerService.get_profile(user_id), None
+
+    @staticmethod
+    def change_password(user_id: int, current_password: str, new_password: str, confirm_password: str) -> Optional[str]:
+        """Change customer password. Returns None on success or error message on failure."""
+        if new_password != confirm_password:
+            return "New password and confirm password do not match"
+        if len(new_password) < 6:
+            return "New password must be at least 6 characters"
+        user = UserRepository.find_user_by_id(user_id)
+        if not user:
+            return "User not found"
+        if not verify_password(current_password, user.get("password_hash", "")):
+            return "Current password is incorrect"
+        hashed = hash_password(new_password)
+        UserRepository.update_user(user_id, {"password_hash": hashed})
+        return None
 
     # ----- Addresses -----
     @staticmethod

@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+import re
 from typing import List, Optional
 
 # ----- Address (schema: street, city, state, postal_code, country, label, latitude, longitude, is_default) -----
@@ -157,3 +158,24 @@ class CustomerProfileUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+
+# ----- Email Update -----
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+
+class EmailUpdateRequest(BaseModel):
+    new_email: str
+
+    @field_validator("new_email")
+    @classmethod
+    def validate_email_format(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not EMAIL_REGEX.match(v):
+            raise ValueError("Invalid email format")
+        return v
+
+# ----- Password Change -----
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+

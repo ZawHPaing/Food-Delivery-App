@@ -29,6 +29,8 @@ type CustomerAuthContextValue = CustomerAuthState & {
     user_type?: string;
   }) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
+  updateUser: (updates: Partial<CustomerUser>) => void;
 };
 
 const STORAGE_KEY = "foodie.customer.auth";
@@ -61,6 +63,19 @@ function persistState(user: CustomerUser | null, token: string | null) {
   }
 }
 
+/** Fetch the full profile from /customer/profile to get first_name/last_name */
+async function fetchProfile(token: string): Promise<{ first_name?: string; last_name?: string; email?: string } | null> {
+  try {
+    const res = await fetch(`${AUTH_API_BASE}/customer/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export function CustomerAuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<CustomerAuthState>({
     isLoggedIn: false,
@@ -76,35 +91,39 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     () => ({
       ...state,
       login: async (email: string, password: string) => {
-  const res = await fetch(`${AUTH_API_BASE}/auth/user/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok)
-    throw new Error(
-      (typeof data.detail === "string"
-        ? data.detail
-        : (data.detail as { message?: string })?.message) ||
-        "Invalid email or password"
-    );
-  
-  const token = data.access_token;
-  
-  // Include full user data from response
-  const user: CustomerUser = {
-    user_id: data.user_id,
-    email: data.email,
-    user_type: data.user_type || "customer",
-  };
-  
-  console.log("Login response data:", data); // Debug log
-  console.log("User type from login:", user.user_type); // Debug log
-  
-  setState({ isLoggedIn: true, user, token });
-  persistState(user, token);
-},
+        const res = await fetch(`${AUTH_API_BASE}/auth/user/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok)
+          throw new Error(
+            (typeof data.detail === "string"
+              ? data.detail
+              : (data.detail as { message?: string })?.message) ||
+            "Invalid email or password"
+          );
+
+        const token = data.access_token;
+
+        // Build initial user from login response
+        const user: CustomerUser = {
+          user_id: data.user_id,
+          email: data.email,
+          user_type: data.user_type || "customer",
+        };
+
+        // Fetch profile to get first_name / last_name for the navbar
+        const profile = await fetchProfile(token);
+        if (profile) {
+          user.first_name = profile.first_name;
+          user.last_name = profile.last_name;
+        }
+
+        setState({ isLoggedIn: true, user, token });
+        persistState(user, token);
+      },
       register: async (data) => {
         let res: Response;
         try {
@@ -150,15 +169,36 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
           first_name: u.first_name ?? data.first_name,
           last_name: u.last_name ?? data.last_name,
         };
-        
-        console.log("Registration response user type:", user.user_type); // Debug log
-        
+
         setState({ isLoggedIn: true, user, token });
         persistState(user, token);
       },
       logout: () => {
         setState({ isLoggedIn: false, user: null, token: null });
         persistState(null, null);
+      },
+      /** Re-fetch profile from API and update navbar/context */
+      refreshUser: async () => {
+        const token = state.token;
+        if (!token || !state.user) return;
+        const profile = await fetchProfile(token);
+        if (profile) {
+          const updatedUser: CustomerUser = {
+            ...state.user,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            email: profile.email ?? state.user.email,
+          };
+          setState((prev) => ({ ...prev, user: updatedUser }));
+          persistState(updatedUser, token);
+        }
+      },
+      /** Instantly update local user state (no API call) */
+      updateUser: (updates: Partial<CustomerUser>) => {
+        if (!state.user || !state.token) return;
+        const updatedUser = { ...state.user, ...updates };
+        setState((prev) => ({ ...prev, user: updatedUser }));
+        persistState(updatedUser, state.token);
       },
     }),
     [state]

@@ -6,6 +6,8 @@ import { useCustomerAuth } from "@/app/_providers/CustomerAuthProvider";
 import {
   getProfile,
   updateProfile,
+  updateEmail,
+  changePassword,
   listAddresses,
   createAddress,
   updateAddress,
@@ -14,8 +16,10 @@ import {
   type AddressRecord,
 } from "@/lib/customerApi";
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export default function ProfilePage() {
-  const { isLoggedIn } = useCustomerAuth();
+  const { isLoggedIn, updateUser } = useCustomerAuth();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [addresses, setAddresses] = useState<AddressRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +30,23 @@ export default function ProfilePage() {
     last_name: "",
     phone: "",
   });
+
+  // ----- Email edit state -----
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
+
+  // ----- Password change state -----
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // ----- Address state -----
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
   const [addressForm, setAddressForm] = useState({
@@ -71,6 +92,11 @@ export default function ProfilePage() {
     try {
       const updated = await updateProfile(editProfile);
       setProfile(updated);
+      // Update navbar immediately
+      updateUser({
+        first_name: updated.first_name ?? undefined,
+        last_name: updated.last_name ?? undefined,
+      });
       setMessage({ type: "ok", text: "Profile saved." });
     } catch (err) {
       setMessage({ type: "err", text: err instanceof Error ? err.message : "Failed to save" });
@@ -79,6 +105,72 @@ export default function ProfilePage() {
     }
   };
 
+  // ----- Email update handler -----
+  const handleStartEditEmail = () => {
+    setEditingEmail(true);
+    setNewEmail(profile?.email ?? "");
+    setEmailError("");
+  };
+
+  const handleCancelEditEmail = () => {
+    setEditingEmail(false);
+    setNewEmail("");
+    setEmailError("");
+  };
+
+  const handleSaveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError("");
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(trimmed)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+    if (trimmed === (profile?.email ?? "").toLowerCase()) {
+      setEmailError("This is already your current email");
+      return;
+    }
+    setEmailSaving(true);
+    try {
+      const updated = await updateEmail({ new_email: trimmed });
+      setProfile(updated);
+      setEditingEmail(false);
+      setNewEmail("");
+      // Update navbar immediately
+      updateUser({ email: updated.email ?? trimmed });
+      setMessage({ type: "ok", text: "Email updated successfully." });
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Failed to update email");
+    } finally {
+      setEmailSaving(false);
+    }
+  };
+
+  // ----- Password change handler -----
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMessage(null);
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordMessage({ type: "err", text: "New password and confirm password do not match" });
+      return;
+    }
+    if (passwordForm.new_password.length < 6) {
+      setPasswordMessage({ type: "err", text: "New password must be at least 6 characters" });
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const result = await changePassword(passwordForm);
+      setPasswordMessage({ type: "ok", text: result.message });
+      setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
+    } catch (err) {
+      setPasswordMessage({ type: "err", text: err instanceof Error ? err.message : "Failed to change password" });
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  // ----- Address handlers -----
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -214,9 +306,8 @@ export default function ProfilePage() {
 
         {message && (
           <div
-            className={`mb-4 p-3 rounded-lg text-sm ${
-              message.type === "ok" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-            }`}
+            className={`mb-4 p-3 rounded-lg text-sm ${message.type === "ok" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+              }`}
           >
             {message.text}
           </div>
@@ -246,16 +337,63 @@ export default function ProfilePage() {
                 placeholder="Last name"
               />
             </div>
+
+            {/* Email field — editable */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={profile?.email ?? ""}
-                disabled
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-600"
-              />
-              <p className="text-xs text-gray-500 mt-1">Email cannot be changed here.</p>
+              {editingEmail ? (
+                <div className="space-y-2">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => {
+                      setNewEmail(e.target.value);
+                      setEmailError("");
+                    }}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#e4002b]/20 focus:border-[#e4002b]"
+                    placeholder="Enter new email"
+                    autoFocus
+                  />
+                  {emailError && (
+                    <p className="text-sm text-red-600">{emailError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveEmail}
+                      disabled={emailSaving}
+                      className="px-4 py-2 bg-[#e4002b] text-white rounded-lg font-medium hover:bg-[#c40026] disabled:opacity-70"
+                    >
+                      {emailSaving ? "Saving…" : "Save email"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEditEmail}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="email"
+                    value={profile?.email ?? ""}
+                    disabled
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleStartEditEmail}
+                    className="px-4 py-2 text-[#e4002b] font-semibold hover:underline whitespace-nowrap"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
               <input
@@ -272,6 +410,65 @@ export default function ProfilePage() {
               className="w-full py-3 bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white font-semibold rounded-xl hover:shadow-lg disabled:opacity-70"
             >
               {saving ? "Saving…" : "Save changes"}
+            </button>
+          </form>
+        </div>
+
+        {/* Change Password card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Change password</h2>
+
+          {passwordMessage && (
+            <div
+              className={`mb-4 p-3 rounded-lg text-sm ${passwordMessage.type === "ok" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+                }`}
+            >
+              {passwordMessage.text}
+            </div>
+          )}
+
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+              <input
+                type="password"
+                value={passwordForm.current_password}
+                onChange={(e) => setPasswordForm((p) => ({ ...p, current_password: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#e4002b]/20 focus:border-[#e4002b]"
+                placeholder="Enter current password"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+              <input
+                type="password"
+                value={passwordForm.new_password}
+                onChange={(e) => setPasswordForm((p) => ({ ...p, new_password: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#e4002b]/20 focus:border-[#e4002b]"
+                placeholder="Enter new password (min 6 characters)"
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
+              <input
+                type="password"
+                value={passwordForm.confirm_password}
+                onChange={(e) => setPasswordForm((p) => ({ ...p, confirm_password: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#e4002b]/20 focus:border-[#e4002b]"
+                placeholder="Confirm new password"
+                required
+                minLength={6}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={passwordSaving}
+              className="w-full py-3 bg-gradient-to-r from-[#e4002b] to-[#ff6600] text-white font-semibold rounded-xl hover:shadow-lg disabled:opacity-70"
+            >
+              {passwordSaving ? "Changing…" : "Change password"}
             </button>
           </form>
         </div>
