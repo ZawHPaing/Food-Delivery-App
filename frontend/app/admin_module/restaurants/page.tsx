@@ -249,17 +249,17 @@ export default function RestaurantsPage() {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
-          Restaurant Management
-        </h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all shadow-soft hover:shadow-glow"
-        >
-          + Add Restaurant
-        </button>
-      </div>
+<div className="flex justify-between items-center mb-6">
+  <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
+    Restaurant Management
+  </h1>
+  <button
+    onClick={() => setShowAddModal(true)}
+    className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-soft hover:shadow-lg"
+  >
+    + Add Restaurant
+  </button>
+</div>
 
       {/* Stats Cards */}
       {stats && (

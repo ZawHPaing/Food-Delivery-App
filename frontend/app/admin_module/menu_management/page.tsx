@@ -339,32 +339,32 @@ export default function MenuManagementPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
-          Menu Management
-        </h1>
-        <div className="space-x-3">
-          <button
-            onClick={() => setShowCategoryModal(true)}
-            className="px-4 py-2 bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 transition-all shadow-soft hover:shadow-glow"
-          >
-            Manage Categories
-          </button>
-          <button
-            onClick={() => setShowAddMenuModal(true)}
-            className="px-4 py-2 bg-success text-success-foreground rounded-xl hover:bg-success/90 transition-all shadow-soft hover:shadow-glow"
-            disabled={!selectedRestaurantId}
-          >
-            Add Menu
-          </button>
-          <button
-            onClick={() => setShowAddItemModal(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all shadow-soft hover:shadow-glow"
-            disabled={!menuData?.menus.length}
-          >
-            Add Item
-          </button>
-        </div>
-      </div>
+  <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
+    Menu Management
+  </h1>
+  <div className="space-x-3">
+    <button
+      onClick={() => setShowCategoryModal(true)}
+      className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shadow-soft hover:shadow-lg"
+    >
+      Manage Categories
+    </button>
+    <button
+      onClick={() => setShowAddMenuModal(true)}
+      className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-soft hover:shadow-lg"
+      disabled={!selectedRestaurantId}
+    >
+      Add Menu
+    </button>
+    <button
+      onClick={() => setShowAddItemModal(true)}
+      className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-soft hover:shadow-lg"
+      disabled={!menuData?.menus.length}
+    >
+      Add Item
+    </button>
+  </div>
+</div>
 
       {/* Restaurant Selector */}
       <div className="mb-6 glass-card p-4 rounded-xl">
