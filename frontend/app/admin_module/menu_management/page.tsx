@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 type Category = {
   id: number;
@@ -61,12 +62,15 @@ export default function MenuManagementPage() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
+    setMounted(true);
     fetchRestaurants();
     fetchCategories();
+    return () => setMounted(false);
   }, []);
 
   useEffect(() => {
@@ -335,7 +339,7 @@ export default function MenuManagementPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
           Menu Management
         </h1>
         <div className="space-x-3">
@@ -513,15 +517,16 @@ export default function MenuManagementPage() {
         </div>
       )}
 
-      {/* Modals */}
-      {showAddMenuModal && (
+      {/* Modals using Portal */}
+      {mounted && showAddMenuModal && createPortal(
         <MenuModal
           onClose={() => setShowAddMenuModal(false)}
           onSave={handleCreateMenu}
-        />
+        />,
+        document.body
       )}
 
-      {(showAddItemModal || editingItem) && (
+      {mounted && (showAddItemModal || editingItem) && createPortal(
         <MenuItemModal
           menu={selectedMenu || menuData?.menus[0]}
           categories={categories}
@@ -540,10 +545,11 @@ export default function MenuManagementPage() {
               handleCreateMenuItem(menuData.menus[0].id, itemData);
             }
           }}
-        />
+        />,
+        document.body
       )}
 
-      {showCategoryModal && (
+      {mounted && showCategoryModal && createPortal(
         <CategoryModal
           categories={categories}
           onClose={() => setShowCategoryModal(false)}
@@ -551,7 +557,8 @@ export default function MenuManagementPage() {
           onDeleteCategory={handleDeleteCategory}
           newCategoryName={newCategoryName}
           setNewCategoryName={setNewCategoryName}
-        />
+        />,
+        document.body
       )}
     </div>
   );
@@ -584,17 +591,34 @@ const MenuModal = ({ onClose, onSave }: MenuModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl p-6 w-96 glass-card">
-        <h2 className="text-xl font-bold gradient-primary text-transparent bg-clip-text mb-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl mx-4">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isSubmitting}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ✕
+        </button>
+        
+        <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600 mb-4">
           Create New Menu
         </h2>
+        
         <form onSubmit={handleSubmit}>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border border-border rounded-xl px-4 py-2.5 mb-4 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 mb-4 focus:outline-none focus:ring-2 focus:ring-red-500/50"
             placeholder="Menu name"
             autoFocus
             required
@@ -604,14 +628,14 @@ const MenuModal = ({ onClose, onSave }: MenuModalProps) => {
             <button 
               type="button" 
               onClick={onClose} 
-              className="px-4 py-2 border border-border rounded-xl hover:bg-muted transition-colors"
+              className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button 
               type="submit" 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
               disabled={isSubmitting || !name.trim()}
             >
               {isSubmitting ? 'Creating...' : 'Create'}
@@ -670,13 +694,6 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Log for debugging
-  useEffect(() => {
-    console.log('MenuItemModal - item:', item);
-    console.log('MenuItemModal - formData:', formData);
-    console.log('MenuItemModal - categories:', categories);
-  }, [item, formData, categories]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -765,53 +782,61 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl p-6 w-[500px] max-h-[90vh] overflow-y-auto glass-card">
-        <div className="sticky top-0 bg-white/80 backdrop-blur-sm border-b border-border pb-4 mb-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto py-8">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl w-full max-w-[500px] max-h-[90vh] overflow-y-auto shadow-2xl mx-4">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl z-10">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="absolute top-0 right-0 text-gray-500 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50"
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50"
           >
             ✕
           </button>
           
-          <h2 className="text-xl font-bold gradient-primary text-transparent bg-clip-text">
+          <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
             {item ? 'Edit Item' : 'New Item'}
-            {menu && <span className="text-sm font-normal text-muted-foreground ml-2">in {menu.name || 'Unnamed Menu'}</span>}
+            {menu && <span className="text-sm font-normal text-gray-500 ml-2">in {menu.name || 'Unnamed Menu'}</span>}
           </h2>
         </div>
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="p-6">
           {/* Name Field */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground/70 mb-1">
-              Name <span className="text-destructive">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              className={`w-full border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                errors.name ? 'border-destructive' : 'border-border'
+              className={`w-full border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all ${
+                errors.name ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Enter item name"
               disabled={isSubmitting}
               required
             />
             {errors.name && (
-              <p className="mt-1 text-xs text-destructive">{errors.name}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.name}</p>
             )}
           </div>
 
           {/* Description Field */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               value={formData.description || ''}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="w-full border border-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50"
               rows={3}
               placeholder="Enter item description (optional)"
               disabled={isSubmitting}
@@ -820,17 +845,17 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
 
           {/* Price Field */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground/70 mb-1">
-              Price ($) <span className="text-destructive">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Price ($) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/50">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <input
                 type="text"
                 value={(formData.price_cents / 100).toFixed(2)}
                 onChange={handlePriceChange}
-                className={`w-full border rounded-xl pl-8 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                  errors.price ? 'border-destructive' : 'border-border'
+                className={`w-full border rounded-xl pl-8 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all ${
+                  errors.price ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
                 disabled={isSubmitting}
@@ -839,18 +864,18 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
               />
             </div>
             {errors.price && (
-              <p className="mt-1 text-xs text-destructive">{errors.price}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.price}</p>
             )}
           </div>
 
           {/* Image URL Field */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Image URL</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
             <input
               type="url"
               value={formData.image_url || ''}
               onChange={(e) => handleInputChange('image_url', e.target.value)}
-              className="w-full border border-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50"
               placeholder="https://example.com/image.jpg (optional)"
               disabled={isSubmitting}
             />
@@ -858,17 +883,17 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
 
           {/* Categories Field */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Categories</label>
-            <div className="border border-border rounded-xl p-3 max-h-40 overflow-y-auto">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Categories</label>
+            <div className="border border-gray-300 rounded-xl p-3 max-h-40 overflow-y-auto">
               {categories.length === 0 ? (
-                <p className="text-muted-foreground text-center py-2">No categories yet</p>
+                <p className="text-gray-500 text-center py-2">No categories yet</p>
               ) : (
                 categories.map((cat) => {
                   // Check if this category is selected
                   const isChecked = formData.category_ids.includes(cat.id);
                   
                   return (
-                    <label key={cat.id} className="flex items-center mb-2 hover:bg-muted/30 p-2 rounded-lg transition-colors cursor-pointer">
+                    <label key={cat.id} className="flex items-center mb-2 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
                       <input
                         type="checkbox"
                         checked={isChecked}
@@ -878,12 +903,12 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
                             : formData.category_ids.filter((id) => id !== cat.id);
                           handleInputChange('category_ids', newIds);
                         }}
-                        className="mr-2 accent-primary w-4 h-4"
+                        className="mr-2 accent-red-600 w-4 h-4"
                         disabled={isSubmitting}
                       />
                       <span className="text-sm">{cat.name}</span>
                       {isChecked && (
-                        <span className="ml-2 text-xs text-primary">✓</span>
+                        <span className="ml-2 text-xs text-red-600">✓</span>
                       )}
                     </label>
                   );
@@ -891,7 +916,7 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
               )}
             </div>
             {formData.category_ids.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {formData.category_ids.length} categor{formData.category_ids.length === 1 ? 'y' : 'ies'} selected
               </p>
             )}
@@ -899,35 +924,35 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
 
           {/* Availability Checkbox */}
           <div className="mb-6">
-            <label className="flex items-center space-x-3 cursor-pointer p-2 hover:bg-muted/30 rounded-lg transition-colors">
+            <label className="flex items-center space-x-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
               <input
                 type="checkbox"
                 checked={formData.is_available}
                 onChange={(e) => handleInputChange('is_available', e.target.checked)}
-                className="w-4 h-4 accent-primary"
+                className="w-4 h-4 accent-red-600"
                 disabled={isSubmitting}
               />
-              <span className="text-sm font-medium text-foreground/70">Available for order</span>
+              <span className="text-sm font-medium text-gray-700">Available for order</span>
             </label>
           </div>
 
           {/* Form Actions */}
-          <div className="flex justify-end space-x-3 border-t border-border pt-4">
+          <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 border border-border rounded-xl hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !formData.name.trim() || formData.price_cents <= 0}
-              className={`px-4 py-2 bg-primary text-primary-foreground rounded-xl transition-all min-w-[100px] ${
+              className={`px-4 py-2 bg-red-600 text-white rounded-xl transition-all min-w-[100px] ${
                 isSubmitting || !formData.name.trim() || formData.price_cents <= 0
                   ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:bg-primary/90 hover:shadow-glow'
+                  : 'hover:bg-red-700'
               }`}
             >
               {isSubmitting ? (
@@ -980,9 +1005,25 @@ const CategoryModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl p-6 w-96 glass-card">
-        <h2 className="text-xl font-bold gradient-primary text-transparent bg-clip-text mb-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl mx-4">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isSubmitting}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ✕
+        </button>
+        
+        <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600 mb-4">
           Manage Categories
         </h2>
         
@@ -992,7 +1033,7 @@ const CategoryModal = ({
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
-              className="flex-1 border border-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50"
               placeholder="New category name"
               onKeyPress={(e) => e.key === 'Enter' && !isSubmitting && handleCreate()}
               disabled={isSubmitting}
@@ -1000,23 +1041,23 @@ const CategoryModal = ({
             <button
               onClick={handleCreate}
               disabled={isSubmitting || !newCategoryName.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? 'Adding...' : 'Add'}
             </button>
           </div>
         </div>
 
-        <div className="max-h-60 overflow-y-auto border border-border rounded-xl">
+        <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-xl">
           {categories.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No categories yet</p>
+            <p className="text-gray-500 text-center py-4">No categories yet</p>
           ) : (
             categories.map((cat) => (
-              <div key={cat.id} className="flex justify-between items-center p-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+              <div key={cat.id} className="flex justify-between items-center p-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
                 <span className="text-sm font-medium">{cat.name}</span>
                 <button
                   onClick={() => onDeleteCategory(cat.id)}
-                  className="text-destructive hover:text-destructive/80 text-sm px-2 py-1 rounded-lg hover:bg-destructive/10 transition-colors"
+                  className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
                   disabled={isSubmitting}
                 >
                   Delete
@@ -1029,7 +1070,7 @@ const CategoryModal = ({
         <div className="flex justify-end mt-4">
           <button 
             onClick={onClose} 
-            className="px-4 py-2 border border-border rounded-xl hover:bg-muted transition-colors"
+            className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
             disabled={isSubmitting}
           >
             Close

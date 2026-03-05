@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Restaurant, RestaurantStats, CreateRestaurant } from "@/types/admin_restaurant";
+import { createPortal } from "react-dom";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -14,8 +15,10 @@ export default function RestaurantsPage() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     console.log('Component mounted');
     console.log('API_BASE_URL:', API_BASE_URL);
     
@@ -26,6 +29,8 @@ export default function RestaurantsPage() {
       .catch(err => console.error('Health check failed:', err));
     
     fetchData();
+    
+    return () => setMounted(false);
   }, []);
 
   const fetchData = async () => {
@@ -245,7 +250,7 @@ export default function RestaurantsPage() {
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
           Restaurant Management
         </h1>
         <button
@@ -388,16 +393,16 @@ export default function RestaurantsPage() {
         </div>
       )}
 
-      {/* Add Restaurant Modal */}
-      {showAddModal && (
+      {/* Modals using Portal */}
+      {mounted && showAddModal && createPortal(
         <RestaurantModal
           onClose={() => setShowAddModal(false)}
           onSave={handleCreateRestaurant}
-        />
+        />,
+        document.body
       )}
 
-      {/* Edit Restaurant Modal */}
-      {showEditModal && selectedRestaurant && (
+      {mounted && showEditModal && selectedRestaurant && createPortal(
         <RestaurantModal
           restaurant={selectedRestaurant}
           onClose={() => {
@@ -405,7 +410,8 @@ export default function RestaurantsPage() {
             setSelectedRestaurant(null);
           }}
           onSave={(data) => handleUpdateRestaurant(selectedRestaurant.id, data)}
-        />
+        />,
+        document.body
       )}
     </div>
   );
@@ -474,12 +480,6 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
     }
   };
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !isSubmitting) {
-      onClose();
-    }
-  };
-
   const handleInputChange = (field: keyof CreateRestaurant, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
@@ -498,12 +498,17 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] animate-fade-in p-4"
-      onClick={handleOverlayClick}
-    >
-      <div className="bg-white rounded-2xl w-full max-w-[500px] max-h-[90vh] overflow-y-auto glass-card relative" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white/80 backdrop-blur-sm border-b border-border p-6 rounded-t-2xl">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl w-full max-w-[500px] max-h-[90vh] overflow-y-auto shadow-2xl mx-4">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl z-10">
           <button
             type="button"
             onClick={onClose}
@@ -513,41 +518,42 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
             ✕
           </button>
           
-          <h2 className="text-xl font-bold gradient-primary text-transparent bg-clip-text">
+          <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
             {restaurant ? 'Edit Restaurant' : 'Add New Restaurant'}
           </h2>
         </div>
         
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             {/* Name field */}
             <div>
-              <label className="block text-sm font-medium text-foreground/70 mb-1">
-                Name <span className="text-destructive">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                className={`w-full border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                  errors.name ? 'border-destructive' : 'border-border'
+                className={`w-full border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all ${
+                  errors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter restaurant name"
                 disabled={isSubmitting}
                 autoFocus
               />
               {errors.name && (
-                <p className="mt-1 text-xs text-destructive">{errors.name}</p>
+                <p className="mt-1 text-xs text-red-500">{errors.name}</p>
               )}
             </div>
 
             {/* Description field */}
             <div>
-              <label className="block text-sm font-medium text-foreground/70 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
               <textarea
                 value={formData.description || ''}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className="w-full border border-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                 rows={3}
                 placeholder="Enter restaurant description"
                 disabled={isSubmitting}
@@ -556,27 +562,27 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
 
             {/* Image URL field */}
             <div>
-              <label className="block text-sm font-medium text-foreground/70 mb-1">Image URL</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
               <input
                 type="url"
                 value={formData.image_url || ''}
                 onChange={(e) => handleInputChange('image_url', e.target.value)}
-                className={`w-full border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                  errors.image_url ? 'border-destructive' : 'border-border'
+                className={`w-full border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all ${
+                  errors.image_url ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="https://example.com/restaurant-image.jpg"
                 disabled={isSubmitting}
               />
               {errors.image_url && (
-                <p className="mt-1 text-xs text-destructive">{errors.image_url}</p>
+                <p className="mt-1 text-xs text-red-500">{errors.image_url}</p>
               )}
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-gray-500">
                 Optional: Add a URL for the restaurant's cover image
               </p>
               
               {/* Image Preview */}
               {imagePreview && (
-                <div className="mt-3 rounded-xl overflow-hidden h-32 border border-border">
+                <div className="mt-3 rounded-xl overflow-hidden h-32 border border-gray-300">
                   <img 
                     src={imagePreview} 
                     alt="Preview" 
@@ -590,22 +596,22 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
             {/* City and Cuisine fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/70 mb-1">City</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                 <input
                   type="text"
                   value={formData.city || ''}
                   onChange={(e) => handleInputChange('city', e.target.value)}
-                  className="w-full border border-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   placeholder="e.g., New York"
                   disabled={isSubmitting}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/70 mb-1">Cuisine Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cuisine Type</label>
                 <select
                   value={formData.cuisine_type || ''}
                   onChange={(e) => handleInputChange('cuisine_type', e.target.value)}
-                  className="w-full border border-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   disabled={isSubmitting}
                 >
                   <option value="">Select cuisine</option>
@@ -618,37 +624,38 @@ const RestaurantModal = ({ restaurant, onClose, onSave }: RestaurantModalProps) 
 
             {/* Approved checkbox */}
             <div className="py-2">
-              <label className="flex items-center space-x-3 cursor-pointer p-2 hover:bg-muted/30 rounded-lg transition-colors">
+              <label className="flex items-center space-x-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
                 <input
                   type="checkbox"
                   checked={formData.is_approved}
                   onChange={(e) => handleInputChange('is_approved', e.target.checked)}
-                  className="w-4 h-4 accent-primary"
+                  className="w-4 h-4 accent-red-600"
                   disabled={isSubmitting}
                 />
-                <span className="text-sm font-medium text-foreground/70">
+                <span className="text-sm font-medium text-gray-700">
                   Approved (visible to customers)
                 </span>
               </label>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 border-t border-border mt-6 pt-4">
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 border-t border-gray-200 mt-6 pt-4">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 border border-border rounded-xl hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !formData.name.trim()}
-              className={`px-4 py-2 bg-primary text-primary-foreground rounded-xl transition-all min-w-[120px] ${
+              className={`px-4 py-2 bg-red-600 text-white rounded-xl transition-all min-w-[120px] ${
                 isSubmitting || !formData.name.trim()
                   ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:bg-primary/90 hover:shadow-glow'
+                  : 'hover:bg-red-700 hover:shadow-lg'
               }`}
             >
               {isSubmitting ? (

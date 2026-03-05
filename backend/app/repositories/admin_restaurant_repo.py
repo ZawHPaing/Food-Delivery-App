@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 from ..supabase_client import supabase
+from collections import defaultdict
 
 class RestaurantRepository:
     
@@ -134,116 +135,123 @@ class RestaurantRepository:
             }
     
     @staticmethod
-    async def get_restaurant_metrics(restaurant_id: int) -> Dict:
-        """Get metrics for a specific restaurant"""
+    async def get_bulk_restaurant_metrics(restaurant_ids: List[int]) -> Dict[int, Dict]:
+        """
+        Get metrics for multiple restaurants in just 3-4 queries instead of N*4 queries.
+        Returns a dictionary mapping restaurant_id to metrics.
+        """
+        if not restaurant_ids:
+            return {}
+        
         try:
-            # Get menu count - count total menu items across all menus
-            menu_response = supabase.table("menus") \
-                .select("id") \
-                .eq("restaurant_id", restaurant_id) \
+            print(f"\n=== Calculating bulk metrics for {len(restaurant_ids)} restaurants ===")
+            
+            # ===== 1. Get menu item counts per restaurant in one query =====
+            # First, get all menus for these restaurants
+            menus_response = supabase.table("menus") \
+                .select("id, restaurant_id") \
+                .in_("restaurant_id", restaurant_ids) \
                 .execute()
             
-            menu_ids = [m["id"] for m in menu_response.data] if menu_response.data else []
+            menus = menus_response.data or []
             
-            total_menu_items = 0
-            if menu_ids:
+            # Group menu_ids by restaurant_id
+            restaurant_to_menu_ids = defaultdict(list)
+            all_menu_ids = []
+            
+            for menu in menus:
+                restaurant_id = menu["restaurant_id"]
+                menu_id = menu["id"]
+                restaurant_to_menu_ids[restaurant_id].append(menu_id)
+                all_menu_ids.append(menu_id)
+            
+            # Get item counts per menu (one query)
+            menu_item_counts = defaultdict(int)
+            if all_menu_ids:
+                # Using count with group by would be ideal, but Supabase's count in select works differently
+                # Alternative: get all items and count them manually
                 items_response = supabase.table("menu_items") \
-                    .select("id", count="exact") \
-                    .in_("menu_id", menu_ids) \
+                    .select("menu_id") \
+                    .in_("menu_id", all_menu_ids) \
                     .execute()
-                total_menu_items = items_response.count or 0
+                
+                items = items_response.data or []
+                for item in items:
+                    menu_item_counts[item["menu_id"]] += 1
             
-            # Get order count
-            order_response = supabase.table("orders") \
-                .select("id", count="exact") \
-                .eq("restaurant_id", restaurant_id) \
+            # Aggregate item counts per restaurant
+            restaurant_menu_counts = defaultdict(int)
+            for restaurant_id, menu_ids in restaurant_to_menu_ids.items():
+                total_items = sum(menu_item_counts.get(menu_id, 0) for menu_id in menu_ids)
+                restaurant_menu_counts[restaurant_id] = total_items
+            
+            # ===== 2. Get order counts per restaurant (one query) =====
+            orders_response = supabase.table("orders") \
+                .select("restaurant_id") \
+                .in_("restaurant_id", restaurant_ids) \
                 .execute()
             
-            # Get average rating
-            review_response = supabase.table("reviews") \
-                .select("rating") \
-                .eq("restaurant_id", restaurant_id) \
+            orders = orders_response.data or []
+            restaurant_order_counts = defaultdict(int)
+            for order in orders:
+                restaurant_order_counts[order["restaurant_id"]] += 1
+            
+            # ===== 3. Get review stats per restaurant (one query) =====
+            reviews_response = supabase.table("reviews") \
+                .select("restaurant_id, rating") \
+                .in_("restaurant_id", restaurant_ids) \
                 .execute()
             
-            avg_rating = 0
-            total_reviews = 0
-            if review_response.data:
-                ratings = [r.get("rating", 0) for r in review_response.data if r.get("rating")]
-                total_reviews = len(ratings)
-                avg_rating = sum(ratings) / total_reviews if ratings else 0
+            reviews = reviews_response.data or []
             
-            return {
-                "menu_count": total_menu_items,
-                "order_count": order_response.count or 0,
-                "average_rating": round(avg_rating, 1),
-                "total_reviews": total_reviews
-            }
+            # Group ratings by restaurant
+            restaurant_ratings = defaultdict(list)
+            for review in reviews:
+                restaurant_ratings[review["restaurant_id"]].append(review["rating"])
+            
+            # Calculate averages
+            restaurant_avg_ratings = {}
+            restaurant_review_counts = {}
+            
+            for restaurant_id, ratings in restaurant_ratings.items():
+                restaurant_review_counts[restaurant_id] = len(ratings)
+                restaurant_avg_ratings[restaurant_id] = sum(ratings) / len(ratings) if ratings else 0
+            
+            # ===== 4. Build metrics for all restaurants =====
+            metrics = {}
+            for restaurant_id in restaurant_ids:
+                metrics[restaurant_id] = {
+                    "menu_count": restaurant_menu_counts.get(restaurant_id, 0),
+                    "order_count": restaurant_order_counts.get(restaurant_id, 0),
+                    "average_rating": round(restaurant_avg_ratings.get(restaurant_id, 0), 1),
+                    "total_reviews": restaurant_review_counts.get(restaurant_id, 0)
+                }
+            
+            # Print summary
+            print(f"Bulk metrics complete: {len(restaurant_ids)} restaurants processed in 3 queries")
+            for rid, m in list(metrics.items())[:3]:  # Show first 3 as sample
+                print(f"  Restaurant {rid}: menu_count={m['menu_count']}, orders={m['order_count']}, rating={m['average_rating']}")
+            
+            return metrics
+            
         except Exception as e:
-            print(f"Error getting restaurant metrics for {restaurant_id}: {e}")
-            return {
+            print(f"Error in bulk restaurant metrics: {e}")
+            import traceback
+            traceback.print_exc()
+            return {}
+    
+    # Keep single restaurant version for backward compatibility
+    @staticmethod
+    async def get_restaurant_metrics(restaurant_id: int) -> Dict:
+        """Get metrics for a specific restaurant (uses bulk method internally)"""
+        try:
+            result = await RestaurantRepository.get_bulk_restaurant_metrics([restaurant_id])
+            return result.get(restaurant_id, {
                 "menu_count": 0,
                 "order_count": 0,
                 "average_rating": 0,
                 "total_reviews": 0
-            }
-    @staticmethod
-    async def get_restaurant_metrics(restaurant_id: int) -> Dict:
-        """Get metrics for a specific restaurant"""
-        try:
-            print(f"\n=== Calculating metrics for restaurant {restaurant_id} ===")
-            
-            # Get all menus for this restaurant
-            menus_response = supabase.table("menus") \
-                .select("id, name") \
-                .eq("restaurant_id", restaurant_id) \
-                .execute()
-            
-            menu_ids = [m["id"] for m in menus_response.data] if menus_response.data else []
-            print(f"Found {len(menu_ids)} menus: {menu_ids}")
-            
-            # Count total menu items across all menus
-            total_menu_items = 0
-            if menu_ids:
-                for menu_id in menu_ids:
-                    items_response = supabase.table("menu_items") \
-                        .select("id", count="exact") \
-                        .eq("menu_id", menu_id) \
-                        .execute()
-                    item_count = items_response.count or 0
-                    total_menu_items += item_count
-                    print(f"  Menu {menu_id} has {item_count} items")
-            
-            # Get order count
-            order_response = supabase.table("orders") \
-                .select("id", count="exact") \
-                .eq("restaurant_id", restaurant_id) \
-                .execute()
-            order_count = order_response.count or 0
-            print(f"Found {order_count} orders")
-            
-            # Get average rating
-            review_response = supabase.table("reviews") \
-                .select("rating") \
-                .eq("restaurant_id", restaurant_id) \
-                .execute()
-            
-            avg_rating = 0
-            total_reviews = 0
-            if review_response.data:
-                ratings = [r.get("rating", 0) for r in review_response.data if r.get("rating")]
-                total_reviews = len(ratings)
-                avg_rating = sum(ratings) / total_reviews if ratings else 0
-                print(f"Found {total_reviews} reviews, avg rating: {avg_rating}")
-            
-            print(f"Final metrics: menu_count={total_menu_items}, order_count={order_count}, avg_rating={avg_rating}")
-            print("=" * 50)
-            
-            return {
-                "menu_count": total_menu_items,
-                "order_count": order_count,
-                "average_rating": round(avg_rating, 1),
-                "total_reviews": total_reviews
-            }
+            })
         except Exception as e:
             print(f"Error getting restaurant metrics for {restaurant_id}: {e}")
             return {

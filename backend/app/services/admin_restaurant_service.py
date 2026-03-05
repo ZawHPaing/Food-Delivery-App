@@ -10,23 +10,45 @@ class RestaurantService:
     
     @staticmethod
     async def get_all_restaurants(approved_only: bool = False) -> List[Dict]:
-        """Get all restaurants"""
+        """Get all restaurants with metrics using bulk queries"""
         try:
+            # Get all restaurants (1 query)
             restaurants = await RestaurantRepository.get_all_restaurants(approved_only)
             
-            # Add metrics for each restaurant
+            if not restaurants:
+                return []
+            
+            # Extract restaurant IDs
+            restaurant_ids = [r["id"] for r in restaurants]
+            
+            # Get metrics for all restaurants in bulk (3-4 queries instead of 4 per restaurant)
+            print(f"Fetching bulk metrics for {len(restaurant_ids)} restaurants...")
+            bulk_metrics = await RestaurantRepository.get_bulk_restaurant_metrics(restaurant_ids)
+            
+            # Apply metrics to each restaurant
             for r in restaurants:
-                metrics = await RestaurantRepository.get_restaurant_metrics(r["id"])
+                metrics = bulk_metrics.get(r["id"], {
+                    "menu_count": 0,
+                    "order_count": 0,
+                    "average_rating": 0,
+                    "total_reviews": 0
+                })
                 r.update(metrics)
+                
+                # Keep the detailed logging for debugging
                 print(f"Restaurant {r['id']} - {r['name']}:")
                 print(f"  - Menu count: {r.get('menu_count', 0)}")
                 print(f"  - Order count: {r.get('order_count', 0)}")
                 print(f"  - Avg rating: {r.get('average_rating', 0)}")
                 print(f"  - Image URL: {r.get('image_url', 'None')}")
             
+            print(f"Successfully processed {len(restaurants)} restaurants with metrics")
             return restaurants
+            
         except Exception as e:
             print(f"Error in get_all_restaurants service: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     @staticmethod
@@ -37,7 +59,7 @@ class RestaurantService:
             if not restaurant:
                 return None
             
-            # Get metrics
+            # Get metrics for single restaurant (still uses bulk method internally)
             metrics = await RestaurantRepository.get_restaurant_metrics(restaurant_id)
             restaurant.update(metrics)
             
@@ -57,7 +79,7 @@ class RestaurantService:
             restaurant = await RestaurantRepository.create_restaurant(restaurant_dict)
             
             if restaurant:
-                # Get metrics
+                # Get metrics for new restaurant
                 metrics = await RestaurantRepository.get_restaurant_metrics(restaurant["id"])
                 restaurant.update(metrics)
             
