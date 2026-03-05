@@ -10,11 +10,6 @@ import CartSidebar from "@/components/ui/CartSidebar";
 import { useCart } from "@/app/_providers/CartProvider";
 import { formatPrice } from "@/types";
 import type { Category, MenuItemWithCategory, Review } from "@/types";
-import {
-  getRestaurantWithMenu,
-  getPopularItems,
-  getRestaurantReviews,
-} from "@/data/restaurants";
 import { getRestaurantWithMenuFromApi } from "@/lib/discoveryApi";
 import type { RestaurantWithMenu } from "@/types";
 
@@ -43,6 +38,7 @@ function apiToRestaurantWithMenu(api: NonNullable<Awaited<ReturnType<typeof getR
   };
   
   // Include image_url from the API response
+  const apiAny = api as Record<string, unknown>;
   return {
     id: api.id,
     name: api.name,
@@ -54,13 +50,15 @@ function apiToRestaurantWithMenu(api: NonNullable<Awaited<ReturnType<typeof getR
     average_rating: api.average_rating ?? 0,
     total_reviews: api.total_reviews ?? 0,
     created_at: "",
-    image: api.image_url ?? undefined,  // Map image_url from API to image field
+    image: api.image_url ?? undefined,
     deliveryTime: "25-35 min",
     deliveryFee: "Free",
     distance: "",
     isOpen: true,
     menus: [menu],
     categories,
+    opening_hours: typeof apiAny.opening_hours === "string" ? apiAny.opening_hours : undefined,
+    phone: typeof apiAny.phone === "string" ? apiAny.phone : undefined,
   };
 }
 
@@ -84,7 +82,6 @@ export default function RestaurantPage({ params }: PageProps) {
         if (cancelled) return;
         
         if (api) {
-          console.log('API Response:', api); // Debug log
           setRestaurant(apiToRestaurantWithMenu(api));
         } else {
           // If no API data, set to null which will trigger notFound
@@ -125,9 +122,9 @@ export default function RestaurantPage({ params }: PageProps) {
     notFound();
   }
 
-  const popularItems = getPopularItems(restaurantId);
-  const reviews = getRestaurantReviews(restaurantId);
   const menu = restaurant.menus[0];
+  const popularItems = menu?.items?.slice(0, 6) ?? [];
+  const reviews: Review[] = [];
   const categories = restaurant.categories;
 
   // Group items by category
@@ -469,9 +466,13 @@ export default function RestaurantPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-4">
-                  {reviews.slice(0, 3).map((review) => (
-                    <ReviewCard key={review.id} review={review} />
-                  ))}
+                  {reviews.length === 0 ? (
+                    <p className="text-sm text-gray-500">No reviews yet.</p>
+                  ) : (
+                    reviews.slice(0, 3).map((review) => (
+                      <ReviewCard key={review.id} review={review} />
+                    ))
+                  )}
                 </div>
 
                 {reviews.length > 3 && (
@@ -524,7 +525,7 @@ export default function RestaurantPage({ params }: PageProps) {
                       />
                     </svg>
                     <span className="text-gray-600">
-                      Open daily 10:00 AM - 10:00 PM
+                      {restaurant.opening_hours ?? "—"}
                     </span>
                   </div>
                   <div className="flex items-start gap-3">
@@ -541,7 +542,7 @@ export default function RestaurantPage({ params }: PageProps) {
                         d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                       />
                     </svg>
-                    <span className="text-gray-600">+95 9 xxx xxx xxx</span>
+                    <span className="text-gray-600">{restaurant.phone ?? "—"}</span>
                   </div>
                 </div>
               </div>

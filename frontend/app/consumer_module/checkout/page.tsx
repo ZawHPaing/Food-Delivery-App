@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCart } from "@/app/_providers/CartProvider";
 import { useCustomerAuth } from "@/app/_providers/CustomerAuthProvider";
-import { listAddresses, placeOrder, validateVoucher, type AddressRecord } from "@/lib/customerApi";
+import { listAddresses, placeOrder, type AddressRecord } from "@/lib/customerApi";
 import { createPaymentIntent } from "@/lib/paymentApi";
 import { formatPrice } from "@/types";
 import StripePaymentForm from "@/components/payment/StripePaymentForm";
@@ -46,11 +46,6 @@ export default function CheckoutPage() {
     country: "",
   });
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("cash");
-  const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucherCode, setAppliedVoucherCode] = useState<string | null>(null);
-  const [discountCents, setDiscountCents] = useState(0);
-  const [voucherError, setVoucherError] = useState<string | null>(null);
-  const [voucherLoading, setVoucherLoading] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -112,43 +107,6 @@ export default function CheckoutPage() {
     }
   }, [items.length, restaurantId, router]);
 
-  const totalWithDiscount = Math.max(0, totalCents - discountCents);
-
-  const handleApplyVoucher = async () => {
-    const code = voucherCode.trim();
-    if (!code || !restaurantId) return;
-    setVoucherError(null);
-    setVoucherLoading(true);
-    try {
-      const res = await validateVoucher({
-        code,
-        subtotal_cents: subtotalCents,
-        restaurant_id: restaurantId,
-      });
-      if (res.valid) {
-        setAppliedVoucherCode(code);
-        setDiscountCents(res.discount_cents);
-      } else {
-        setVoucherError(res.message || "Invalid voucher");
-        setAppliedVoucherCode(null);
-        setDiscountCents(0);
-      }
-    } catch {
-      setVoucherError("Failed to validate voucher");
-      setAppliedVoucherCode(null);
-      setDiscountCents(0);
-    } finally {
-      setVoucherLoading(false);
-    }
-  };
-
-  const removeVoucher = () => {
-    setAppliedVoucherCode(null);
-    setDiscountCents(0);
-    setVoucherCode("");
-    setVoucherError(null);
-  };
-
   const getDeliveryAddressText = (): string => {
     if (useManualAddress) {
       const parts = [
@@ -183,7 +141,6 @@ export default function CheckoutPage() {
         payment_method: paymentMethod,
         tax_cents: taxCents,
         delivery_fee_cents: deliveryFeeCents,
-        voucher_code: appliedVoucherCode ?? undefined,
         items: items.map((item) => ({
           menu_item_id: item.menuItem.id,
           quantity: item.quantity,
@@ -286,7 +243,7 @@ export default function CheckoutPage() {
             {/* Order Summary */}
             <div className="mb-6 p-4 bg-gray-50 rounded-xl">
               <h3 className="font-medium text-gray-900 mb-2">Order Summary</h3>
-              <p className="text-2xl font-bold text-[#e4002b]">{formatPrice(totalWithDiscount)}</p>
+              <p className="text-2xl font-bold text-[#e4002b]">{formatPrice(totalCents)}</p>
               <p className="text-sm text-gray-500 mt-1">Order #{placedOrderId}</p>
             </div>
 
@@ -445,45 +402,10 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Voucher */}
+            {/* Payment */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-[#ff6600]/10 text-[#ff6600] flex items-center justify-center text-sm">2</span>
-                Voucher / promo code
-              </h2>
-              {appliedVoucherCode ? (
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <span className="font-medium text-green-800">{appliedVoucherCode} applied (−{formatPrice(discountCents)})</span>
-                  <button type="button" onClick={removeVoucher} className="text-sm text-green-700 hover:underline">
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter code"
-                    value={voucherCode}
-                    onChange={(e) => { setVoucherCode(e.target.value); setVoucherError(null); }}
-                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyVoucher}
-                    disabled={voucherLoading || !voucherCode.trim()}
-                    className="px-4 py-3 bg-[#e4002b] text-white font-semibold rounded-xl hover:bg-[#c20025] disabled:opacity-50"
-                  >
-                    {voucherLoading ? "…" : "Apply"}
-                  </button>
-                </div>
-              )}
-              {voucherError && <p className="mt-2 text-sm text-red-600">{voucherError}</p>}
-            </div>
-
-            {/* Payment - Updated with Stripe option */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-[#ff6600]/10 text-[#ff6600] flex items-center justify-center text-sm">3</span>
                 Payment
               </h2>
               <div className="space-y-3">
@@ -569,16 +491,10 @@ export default function CheckoutPage() {
                   <span className="text-gray-600">Tax</span>
                   <span className="font-medium text-gray-900">{formatPrice(taxCents)}</span>
                 </div>
-                {discountCents > 0 && (
-                  <div className="flex justify-between text-sm text-green-700">
-                    <span>Voucher discount</span>
-                    <span className="font-medium">−{formatPrice(discountCents)}</span>
-                  </div>
-                )}
                 <div className="h-px bg-gray-200 my-2" />
                 <div className="flex justify-between items-end">
                   <span className="font-bold text-gray-900 text-lg">Total</span>
-                  <span className="font-bold text-[#e4002b] text-2xl">{formatPrice(totalWithDiscount)}</span>
+                  <span className="font-bold text-[#e4002b] text-2xl">{formatPrice(totalCents)}</span>
                 </div>
                 <button
                   type="submit"

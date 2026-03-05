@@ -31,6 +31,8 @@ export interface Restaurant {
   deliveryFee?: string;
   distance?: string;
   isOpen?: boolean;
+  opening_hours?: string;
+  phone?: string;
 }
 
 // Menu Types
