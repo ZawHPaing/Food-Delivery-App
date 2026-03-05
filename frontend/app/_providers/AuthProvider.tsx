@@ -1,0 +1,200 @@
+"use client";
+
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+// Add this type at the top
+export type Rider = {
+  id: number;
+  vehicle_type: string;
+  license_plate: string;
+  status: string; // available, unavailable, etc.
+  city: string;
+  current_latitude: number | null;
+  current_longitude: number | null;
+  last_location_update: string | null;
+};
+
+export type User = {
+  id: string;
+  username: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  user_type?: string;  // Make sure this is included!
+  address?: string;
+  rider?: Rider;
+  deliveries?: Array<{ delivery_fee_cents?: number }>;
+  cash_collected_cents?: number;  // COD cash collected by rider
+};
+
+type AuthState = {
+  isLoggedIn: boolean;
+  user: User | null;
+};
+
+type AuthContextValue = AuthState & {
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  updateProfile: (updates: Partial<Omit<User, "id" | "username">>) => void;
+};
+
+const STORAGE_KEY = "foodie.auth";
+const TOKEN_KEY = "access_token";
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function loadState(): AuthState {
+  if (typeof window === "undefined") return { isLoggedIn: false, user: null };
+
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return { isLoggedIn: false, user: null };
+
+  try {
+    const parsed = JSON.parse(raw) as AuthState;
+    return { isLoggedIn: parsed.isLoggedIn, user: parsed.user ?? null };
+  } catch {
+    return { isLoggedIn: false, user: null };
+  }
+}
+
+function persistState(state: AuthState) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AuthState>({ isLoggedIn: false, user: null });
+
+  useEffect(() => {
+    const initial = loadState();
+    setState(initial);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(TOKEN_KEY) : null;
+      if (token && initial.user && !initial.user.user_type) {
+        const base64Url = token.split(".")[1];
+        if (base64Url) {
+          const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split("")
+              .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+              .join("")
+          );
+          const decoded = JSON.parse(jsonPayload) as { user_type?: string; user_id?: number };
+          if (decoded.user_type) {
+            const next: AuthState = {
+              ...initial,
+              user: { ...initial.user, user_type: decoded.user_type },
+            };
+            setState(next);
+            persistState(next);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const value = useMemo<AuthContextValue>(() => ({
+    ...state,
+
+    login: async (email: string, password: string) => {
+      //const response = await fetch("http://localhost:8000/delivery/login", {
+      const response = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) throw new Error("Invalid credentials");
+
+      const data = await response.json();
+      
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+
+      // Create user object with ALL data from login response
+      const userData: User = {
+        id: data.user_id?.toString() || '',
+        username: data.email || '',
+        email: data.email || '',
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        phone: data.phone || '',
+        user_type: data.user_type || '',  // This is the key field!
+        rider: data.rider,
+        deliveries: data.deliveries || [],
+        cash_collected_cents: data.cash_collected_cents || 0,
+      };
+      
+      const next: AuthState = {
+        isLoggedIn: true,
+        user: userData,
+      };
+      
+      console.log("Setting initial user from login:", userData);
+      setState(next);
+      persistState(next);
+      
+      // Then fetch the full profile
+      try {
+        const res = await fetch(`http://localhost:8000/delivery/profile?email=${encodeURIComponent(data.email)}`, {
+          headers: { Authorization: `Bearer ${data.access_token}` },
+        });
+        if (!res.ok) return;
+
+        const profileData = await res.json();
+        console.log("profileData from backend:", profileData);
+
+        // Merge the fetched profile, but preserve everything
+        setState(prev => {
+          if (!prev.user) return prev;
+          const merged: AuthState = {
+            ...prev,
+            user: {
+              ...prev.user,
+              ...profileData,
+              id: profileData.id != null ? String(profileData.id) : prev.user.id,
+              username: prev.user.username,
+              user_type: prev.user.user_type, // Preserve the user_type from login
+            },
+          };
+          console.log("Merged user:", merged.user);
+          persistState(merged);
+          return merged;
+        });
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    },
+
+    logout: () => {
+      localStorage.removeItem(TOKEN_KEY);
+      const next: AuthState = { isLoggedIn: false, user: null };
+      setState(next);
+      persistState(next);
+    },
+
+    updateProfile: (updates) => {
+      setState(prev => {
+        if (!prev.user) return prev;
+        const next: AuthState = {
+          ...prev,
+          user: { ...prev.user, ...updates, username: prev.user.username, id: prev.user.id },
+        };
+        persistState(next);
+        return next;
+      });
+    },
+
+  }), [state]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}

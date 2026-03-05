@@ -1,0 +1,556 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import SearchBar from "@/components/ui/SearchBar";
+import CategoryFilter from "@/components/ui/CategoryFilter";
+import RestaurantGrid from "@/components/ui/RestaurantGrid";
+import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
+import EventBannerSlider from "@/components/ui/EventBannerSlider";
+import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
+import { getRestaurantsFromApi, getRestaurantWithMenuFromApi } from "@/lib/discoveryApi";
+import { useCustomerAuth } from "@/app/_providers/CustomerAuthProvider";
+import { LocationPickerModal } from "@/components/ui/LocationPickerModal";
+
+const transformRestaurant = (r: { 
+  id: number; 
+  name: string; 
+  cuisine_type?: string; 
+  average_rating?: number; 
+  deliveryTime?: string; 
+  deliveryFee?: string; 
+  distance?: string; 
+  image_url?: string | null;
+  image?: string;
+}, isPromoted = false) => ({
+  id: String(r.id),
+  name: r.name,
+  cuisine: r.cuisine_type ?? "",
+  rating: r.average_rating ?? 0,
+  deliveryTime: r.deliveryTime ?? "25-35 min",
+  deliveryFee: r.deliveryFee ?? "Free",
+  distance: r.distance,
+  image: r.image_url ?? r.image ?? "",
+  isPromoted,
+});
+
+// Offers/Promotions data
+const offers = [
+  {
+    id: "1",
+    title: "50% OFF First Order",
+    description: "New customers get 50% off on their first order",
+    discount: "50% OFF",
+    code: "FIRST50",
+    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=400&fit=crop",
+    link: "#",
+  },
+  {
+    id: "2",
+    title: "Free Delivery Weekend",
+    description: "Enjoy free delivery on all orders this weekend",
+    discount: "FREE DELIVERY",
+    image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=400&fit=crop",
+    link: "#",
+  },
+  {
+    id: "3",
+    title: "Buy 2 Get 1 Free",
+    description: "Special offer on selected restaurants",
+    discount: "BUY 2 GET 1",
+    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=400&fit=crop",
+    link: "#",
+  },
+  {
+    id: "4",
+    title: "Weekend Special",
+    description: "Get 30% off on weekend orders",
+    discount: "30% OFF",
+    code: "WEEKEND30",
+    image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=400&fit=crop",
+    link: "#",
+  },
+];
+
+type RestaurantRow = {
+  id: number;
+  name: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  cuisine_type?: string;
+  average_rating?: number;
+  total_reviews?: number;
+  created_at?: string;
+  deliveryTime?: string;
+  deliveryFee?: string;
+  distance?: string;
+  image_url?: string | null;
+  image?: string;
+  isOpen?: boolean;
+};
+
+export default function Home() {
+  const [restaurantsList, setRestaurantsList] = useState<RestaurantRow[]>([]);
+  const [popularFoods, setPopularFoods] = useState<{ id: string; name: string; description: string; rating: number; price: string; image: string; link: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<FilterOptions>({
+    cuisines: [],
+    priceRange: null,
+    deliveryFee: null,
+    minRating: null,
+    maxDeliveryTime: null,
+  });
+  const [sortBy, setSortBy] = useState<SortOption>("popularity");
+
+  const { user, isLoggedIn, logout, token } = useCustomerAuth();
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [userAddresses, setUserAddresses] = useState<any[]>([]);
+
+  const checkLocation = async () => {
+    console.log("[LocationCheck] Starting location check process...");
+    console.log("[LocationCheck] Current auth state: isLoggedIn =", isLoggedIn, "user =", user ? "Populated" : "Null");
+    
+    if (!isLoggedIn) {
+      console.log("[LocationCheck] Aborting: User is not logged in.");
+      return;
+    }
+
+    try {
+      // Use token from context if available, otherwise fallback to localStorage
+      const activeToken = token || localStorage.getItem("foodie.customer.token");
+      
+      if (!activeToken) {
+        console.warn("[LocationCheck] Aborting: isLoggedIn is true but no token found in context or localStorage!");
+        return;
+      }
+
+      const apiUrl = "http://localhost:8000/customer/addresses";
+      console.log("[LocationCheck] Fetching from:", apiUrl);
+      
+      const res = await fetch(apiUrl, {
+        headers: { Authorization: `Bearer ${activeToken}` },
+      });
+      
+      console.log("[LocationCheck] Backend response status:", res.status);
+      
+      if (res.status === 401) {
+        console.error("[LocationCheck] 401 Unauthorized! Session expired. Logging out...");
+        logout();
+        return;
+      }
+      
+      if (!res.ok) {
+        const errorDetail = await res.text();
+        console.error("[LocationCheck] Fetch failed with status", res.status, ":", errorDetail);
+        return;
+      }
+
+      const addresses = await res.json();
+      console.log("[LocationCheck] Backend returned", addresses.length, "addresses:", addresses);
+      setUserAddresses(addresses);
+
+      // Check if any address is "Location Ready"
+      const hasValidCoords = addresses.some((a: any) => 
+        a.latitude !== null && 
+        a.latitude !== undefined && 
+        a.longitude !== null && 
+        a.longitude !== undefined
+      );
+
+      if (hasValidCoords) {
+        console.log("[LocationCheck] Valid coordinates found. User location is already set. Modal will NOT be shown.");
+        setIsLocationModalOpen(false);
+        const validAddr = addresses.find((a: any) => a.latitude != null && a.longitude != null);
+        if (validAddr) {
+          localStorage.setItem("foodie.customer.location", JSON.stringify({
+            latitude: validAddr.latitude,
+            longitude: validAddr.longitude
+          }));
+        }
+      } else {
+        console.warn("[LocationCheck] NO valid coordinates found in addresses! Triggering popup modal.");
+        setIsLocationModalOpen(true);
+      }
+    } catch (err) {
+      console.error("[LocationCheck] CRITICAL ERROR during location check:", err);
+    }
+  };
+
+  const handleSaveLocation = async (addressData: any) => {
+    try {
+      const activeToken = token || localStorage.getItem("foodie.customer.token");
+      
+      // If user has an address, update the first one. Otherwise create new.
+      const method = userAddresses.length > 0 ? "PATCH" : "POST";
+      const url = userAddresses.length > 0 
+        ? `http://localhost:8000/customer/addresses/${userAddresses[0].id}`
+        : "http://localhost:8000/customer/addresses";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${activeToken}`,
+        },
+        body: JSON.stringify({
+          ...addressData,
+          label: "Home",
+        }),
+      });
+
+      if (res.ok && addressData.latitude && addressData.longitude) {
+        localStorage.setItem("foodie.customer.location", JSON.stringify({
+          latitude: addressData.latitude,
+          longitude: addressData.longitude
+        }));
+      }
+
+      if (!res.ok) throw new Error("Failed to save location");
+      
+      // Refresh addresses and close modal
+      await checkLocation();
+      setIsLocationModalOpen(false);
+    } catch (err) {
+      console.error("Save location error:", err);
+      throw err;
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    console.log("Searching for:", query);
+    // TODO: Implement search functionality with API
+  };
+
+  const handleFiltersChange = (filters: FilterOptions, sort: SortOption) => {
+    setActiveFilters(filters);
+    setSortBy(sort);
+    console.log("Filters applied:", filters);
+    console.log("Sort by:", sort);
+    // TODO: Implement filter and sort functionality with API
+  };
+
+  const handleCategorySelect = (categoryId: string) => {
+    console.log("Selected category:", categoryId);
+    // TODO: Implement category filter
+  };
+
+  const handleSearchFocusChange = (isFocused: boolean) => {
+    setIsSearchFocused(isFocused);
+  };
+
+  const handleCloseOverlay = () => {
+    setIsSearchFocused(false);
+  };
+
+  useEffect(() => {
+    console.log("[LocationCheck] useEffect triggered! isLoggedIn =", isLoggedIn, "user =", user ? "Populated" : "Null");
+    setLoading(true);
+    getRestaurantsFromApi()
+      .then((apiList) => {
+        console.log('API Restaurants for home page:', apiList);
+        
+        // Log which restaurants have images
+        apiList.forEach(r => {
+          console.log(`Home - Restaurant ${r.id} - ${r.name}: image_url = ${r.image_url || 'none'}`);
+        });
+        
+        const rows: RestaurantRow[] = apiList.map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description ?? "",
+          latitude: r.latitude || 0,
+          longitude: r.longitude || 0,
+          city: r.city ?? "",
+          cuisine_type: r.cuisine_type ?? "",
+          average_rating: r.average_rating ?? 0,
+          total_reviews: r.total_reviews ?? 0,
+          created_at: "",
+          deliveryTime: "25-35 min",
+          deliveryFee: "Free",
+          distance: "",
+          image_url: r.image_url,
+          isOpen: true,
+        }));
+        setRestaurantsList(rows);
+        
+        // Get popular foods from the first restaurant with items
+        if (apiList.length > 0) {
+          return getRestaurantWithMenuFromApi(apiList[0].id);
+        }
+        return null;
+      })
+      .then((firstRestaurant) => {
+        if (firstRestaurant?.menu_items?.length) {
+          setPopularFoods(
+            firstRestaurant.menu_items.slice(0, 6).map((item) => ({
+              id: `f${item.id}`,
+              name: item.name,
+              description: item.description ?? "",
+              rating: 4.5,
+              price: `$${(item.price_cents / 100).toFixed(2)}`,
+              image: item.image_url ?? "",
+              link: `/consumer_module/restaurant/${firstRestaurant.id}`,
+            }))
+          );
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching data for home page:', error);
+      })
+      .finally(() => setLoading(false));
+
+    // Trigger location check whenever isLoggedIn changes to true
+    if (isLoggedIn) {
+      checkLocation();
+    }
+  }, [isLoggedIn]);
+
+  const featuredRestaurants = restaurantsList.slice(0, 4).map((r, i) => transformRestaurant(r, i < 3));
+  const popularRestaurants = [...restaurantsList]
+    .sort((a, b) => (b.total_reviews ?? 0) - (a.total_reviews ?? 0))
+    .map((r) => transformRestaurant(r));
+  const newRestaurants = [...restaurantsList]
+    .sort((a, b) => (b.average_rating ?? 0) - (a.average_rating ?? 0))
+    .slice(0, 5)
+    .map((r) => ({ ...transformRestaurant(r), badge: "NEW" }));
+  const superRestaurants = [...restaurantsList]
+    .sort((a, b) => {
+      const distA = parseFloat(String(a.distance ?? "").replace(" km", "") || "999");
+      const distB = parseFloat(String(b.distance ?? "").replace(" km", "") || "999");
+      return distA - distB;
+    })
+    .slice(0, 5)
+    .map((r) => ({ ...transformRestaurant(r), badge: "NEAR" }));
+
+  return (
+    <div className="min-h-screen bg-[#f8f9fa]">
+      {/* Full Page Search Overlay */}
+      {isSearchFocused && (
+        <div className="fixed inset-0 z-50 bg-white" data-search-overlay="true">
+          {/* Close Button */}
+          <button
+            onClick={handleCloseOverlay}
+            className="absolute top-6 right-6 z-10 p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+            aria-label="Close search"
+          >
+            <svg
+              className="w-6 h-6 text-gray-600 hover:text-gray-900"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+          
+          <div className="container mx-auto px-4 py-6">
+            <div className="max-w-5xl mx-auto">
+              <SearchBar 
+                onSearch={handleSearch} 
+                onFiltersChange={handleFiltersChange}
+                onFocusChange={handleSearchFocusChange}
+                isOverlayMode={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onSave={handleSaveLocation}
+        existingAddress={userAddresses[0]}
+      />
+      
+      {/* Main Page Content */}
+      <main className="py-6">
+        {loading && (
+          <div className="container mx-auto px-4 py-16 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e4002b] mx-auto"></div>
+            <p className="text-gray-500 mt-4">Loading restaurants…</p>
+          </div>
+        )}
+        {!loading && (
+          <>
+            {/* Event Banner Slider */}
+            <section className="mb-8">
+              <div className="container mx-auto px-4">
+                <EventBannerSlider />
+              </div>
+            </section>
+
+            {/* Search Section */}
+            <section className="mb-6">
+              <div className="container mx-auto px-4">
+                <div className="max-w-5xl mx-auto">
+                  <SearchBar 
+                    onSearch={handleSearch} 
+                    onFiltersChange={handleFiltersChange}
+                    onFocusChange={handleSearchFocusChange}
+                    isOverlayMode={false}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Category Filter */}
+            <section className="mb-8">
+              <CategoryFilter onCategorySelect={handleCategorySelect} />
+            </section>
+
+            {/* Popular Orders Section */}
+            {popularFoods.length > 0 && (
+              <HorizontalScrollSection
+                title="Popular Orders"
+                subtitle="Most ordered foods right now"
+                items={popularFoods}
+                type="foods"
+              />
+            )}
+
+            {/* Super Restaurants Section */}
+            {superRestaurants.length > 0 && (
+              <HorizontalScrollSection
+                title="Nearest Restaurants"
+                subtitle="Closest picks with great ratings"
+                items={superRestaurants}
+                type="restaurants"
+              />
+            )}
+
+            {/* Featured Restaurants Grid */}
+            {featuredRestaurants.length > 0 && (
+              <section className="mb-8">
+                <div className="container mx-auto px-4">
+                  <RestaurantGrid
+                    title="Featured Restaurants"
+                    restaurants={featuredRestaurants}
+                    showViewAll={true}
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Popular Restaurants Grid */}
+            {popularRestaurants.length > 0 && (
+              <section className="mb-8">
+                <div className="container mx-auto px-4">
+                  <RestaurantGrid
+                    title="Popular Restaurants"
+                    restaurants={popularRestaurants}
+                    showViewAll={true}
+                  />
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white mt-12 py-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="font-bold text-lg mb-4">Foodie</h3>
+              <p className="text-gray-400 text-sm">
+                Your favorite food delivery app. Order from the best restaurants
+                in town.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Contact
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Account</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <Link href="/login" className="hover:text-white transition-colors">
+                    Sign in
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/register" className="hover:text-white transition-colors">
+                    Create account
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Support</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Help Center
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Track Order
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    FAQs
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Cookie Policy
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
+            <p>© 2024 Foodie. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
