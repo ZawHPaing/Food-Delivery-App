@@ -42,7 +42,7 @@ export default function DeliveryLandingPage() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-6xl">
           <Link href="/consumer_module" className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-lg">F</span>
+              <span className="text-white font-bold text-lg">E</span>
             </div>
             <span className="text-xl font-bold text-gray-900 tracking-tight">Essential</span>
           </Link>
@@ -465,7 +465,7 @@ export default function DeliveryLandingPage() {
             <div className="col-span-2">
               <div className="flex items-center space-x-2 mb-6">
                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">F</span>
+                  <span className="text-white font-bold text-sm">E</span>
                 </div>
                 <span className="text-xl font-bold">Essential</span>
               </div>

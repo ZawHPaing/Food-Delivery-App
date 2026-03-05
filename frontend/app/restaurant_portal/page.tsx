@@ -24,7 +24,7 @@ export default function RestaurantPortalPage() {
           className="flex items-center gap-2 text-neutral-900 no-underline"
         >
           <div className="h-8 w-8 rounded-lg bg-[#e4002b] flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">F</span>
+            <span className="text-white font-semibold text-sm">E</span>
           </div>
           <span className="font-semibold text-neutral-900 tracking-tight">
             Essential
