@@ -67,14 +67,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ isLoggedIn: false, user: null });
 
   useEffect(() => {
-    setState(loadState());
+    const initial = loadState();
+    setState(initial);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(TOKEN_KEY) : null;
+      if (token && initial.user && !initial.user.user_type) {
+        const base64Url = token.split(".")[1];
+        if (base64Url) {
+          const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split("")
+              .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+              .join("")
+          );
+          const decoded = JSON.parse(jsonPayload) as { user_type?: string; user_id?: number };
+          if (decoded.user_type) {
+            const next: AuthState = {
+              ...initial,
+              user: { ...initial.user, user_type: decoded.user_type },
+            };
+            setState(next);
+            persistState(next);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
     ...state,
 
     login: async (email: string, password: string) => {
-      const response = await fetch("http://localhost:8000/delivery/login", {
+      //const response = await fetch("http://localhost:8000/delivery/login", {
+      const response = await fetch("http://localhost:8000/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

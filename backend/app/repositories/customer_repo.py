@@ -377,3 +377,4 @@ class CustomerRepository:
             .execute()
         data = _safe_data(response) or []
         return [_normalize_notification_row(r) for r in data]
+        

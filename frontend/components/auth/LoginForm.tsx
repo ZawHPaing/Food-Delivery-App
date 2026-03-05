@@ -126,6 +126,26 @@ export default function LoginForm() {
               Sign up
             </Link>
           </p>
+
+          <div className="mt-8 p-5 rounded-xl bg-gradient-to-br from-[#e4002b] to-[#ff6600] text-white shadow-md">
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] mb-4 opacity-90 text-center">
+              Partner with Foodie
+            </p>
+            <div className="grid grid-cols-1 gap-2.5">
+              <Link 
+                href="/restaurant_portal"
+                className="border-2 border-white/40 px-4 py-2 rounded-lg font-semibold text-xs text-center hover:bg-white/10 hover:border-white transition-all uppercase tracking-wide"
+              >
+                RESTAURANT PORTAL
+              </Link>
+              <Link 
+                href="/delivery_module/landing"
+                className="border-2 border-white/40 px-4 py-2 rounded-lg font-semibold text-xs text-center hover:bg-white/10 hover:border-white transition-all uppercase tracking-wide"
+              >
+                JOIN AS RIDER
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </AuthLayout>

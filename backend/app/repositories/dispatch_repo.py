@@ -55,6 +55,16 @@ class DispatchRepository:
             pass
 
     @staticmethod
+    def expire_rider_pending_requests_for_order(order_id: int, rider_id: int) -> None:
+        """Ensure no pending requests remain for this rider for the given order after decline."""
+        try:
+            supabase.table("dispatch_requests").update({"status": "expired"}).eq(
+                "order_id", order_id
+            ).eq("rider_id", rider_id).eq("status", "pending").execute()
+        except Exception:
+            pass
+
+    @staticmethod
     def get_dispatch_request_by_id(request_id: int) -> Optional[Dict]:
         try:
             response = supabase.table("dispatch_requests") \
@@ -86,7 +96,7 @@ class DispatchRepository:
     def get_order_details(order_id: int) -> Optional[Dict]:
         """Get order with restaurant and order_items. Uses separate queries so relation names don't matter."""
         try:
-            order_resp = supabase.table("orders").select("*").eq("id", order_id).maybe_single().execute()
+            order_resp = supabase.table("orders").select("*, delivery_latitude, delivery_longitude").eq("id", order_id).maybe_single().execute()
             data = getattr(order_resp, "data", None)
             if not data:
                 return None
@@ -103,6 +113,36 @@ class DispatchRepository:
                     row["restaurant"] = {}
             else:
                 row["restaurant"] = {}
+            
+            # Fetch customer user details
+            uid = row.get("user_id")
+            if uid is not None:
+                user_resp = supabase.table("users").select("first_name, last_name, phone").eq("id", uid).maybe_single().execute()
+                udata = getattr(user_resp, "data", None)
+                if udata:
+                    row["customer_user"] = udata[0] if isinstance(udata, list) and udata else udata
+                else:
+                    row["customer_user"] = {}
+                
+                # Fetch customer's default address for coordinates
+                address_resp = supabase.table("addresses").select("street, city, state, postal_code, country, latitude, longitude").eq("user_id", uid).eq("is_default", False).maybe_single().execute()
+                adata = getattr(address_resp, "data", None)
+                if adata:
+                    address_row = adata[0] if isinstance(adata, list) and adata else adata
+                    row["delivery_latitude"] = address_row.get("latitude")
+                    row["delivery_longitude"] = address_row.get("longitude")
+                    # Construct full address string
+                    full_address = ", ".join(filter(None, [
+                        address_row.get("street"),
+                        address_row.get("city"),
+                        address_row.get("state"),
+                        address_row.get("postal_code"),
+                        address_row.get("country")
+                    ]))
+                    row["delivery_address"] = full_address or row.get("delivery_address")
+            else:
+                row["customer_user"] = {}
+                
             oi_resp = supabase.table("order_items").select("id, order_id, menu_item_id, quantity, price_cents").eq("order_id", order_id).execute()
             oi_data = getattr(oi_resp, "data", None) or []
             items = oi_data if isinstance(oi_data, list) else [oi_data] if oi_data else []

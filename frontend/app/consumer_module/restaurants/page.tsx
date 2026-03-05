@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
+import { restaurants as dbRestaurants } from "@/data/restaurants";
 import { getRestaurantsFromApi } from "@/lib/discoveryApi";
 import SearchBar from "@/components/ui/SearchBar";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";

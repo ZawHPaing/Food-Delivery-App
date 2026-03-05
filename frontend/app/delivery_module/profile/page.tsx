@@ -12,7 +12,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { DeliveryNavbar } from '@/components/delivery/DeliveryNavbar';
 
 export default function ProfilePage() {
-  const { vehicle, toggleOnline, setVehicle } = useDeliveryContext();
+  const { vehicle, toggleOnline, setVehicle, status } = useDeliveryContext();
   const { isLoggedIn, user, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
@@ -50,9 +50,10 @@ export default function ProfilePage() {
   }, [user]);
 
   // Safely read deliveries and COD cash from user
-  const deliveries = (user as any)?.deliveries as Array<{ delivery_fee_cents?: number }> ?? [];
-  const deliveriesCount = deliveries.length;
-  const earningsCents = deliveries.reduce(
+  const deliveries = (user as any)?.deliveries as Array<{ status: string; delivery_fee_cents?: number }> ?? [];
+  const completedDeliveries = deliveries.filter(d => d.status === 'delivered');
+  const deliveriesCount = completedDeliveries.length;
+  const earningsCents = completedDeliveries.reduce(
     (sum: number, d: { delivery_fee_cents?: number }) => sum + (d.delivery_fee_cents ?? 0),
     0
   );
@@ -65,7 +66,6 @@ export default function ProfilePage() {
     s === 'available' ? 'online' : s === 'busy' ? 'busy' : 'offline';
 
   const initialStatus = backendToDriverStatus((user as any)?.rider?.status);
-  const [availability, setAvailability] = useState<DriverStatus>(initialStatus ?? 'offline');
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
@@ -96,10 +96,16 @@ export default function ProfilePage() {
   }, [user]);
 
   const displayVehicle: VehicleType = registeredVehicle ?? vehicle;
-  const allowedVehicleTypes: VehicleType[] = [displayVehicle];
+  const allowedVehicleTypes: VehicleType[] = ['bike', 'car'];
+  const [vehicleLoading, setVehicleLoading] = useState(false);
 
-  const handleVehicleChange = () => {
-    // Vehicle type is fixed; no switching from this screen
+  const handleVehicleChange = async (newVehicle: VehicleType) => {
+    setVehicleLoading(true);
+    try {
+      await setVehicle(newVehicle);
+    } finally {
+      setVehicleLoading(false);
+    }
   };
 
   // Display values directly from `user`
@@ -231,7 +237,7 @@ export default function ProfilePage() {
             <div>
               <h2 className="text-sm font-semibold text-gray-900 mb-2">Status</h2>
               <StatusToggle
-                status={availability}
+                status={status}
                 onToggle={handleToggleStatus}
                 disabled={statusLoading || isPending}
               />
@@ -241,7 +247,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Vehicle */}
-            <div>
+            <div className={vehicleLoading ? 'opacity-50 pointer-events-none' : ''}>
               <h2 className="text-sm font-semibold text-gray-900 mb-2">Vehicle</h2>
               <VehicleSelector
                 selected={displayVehicle}

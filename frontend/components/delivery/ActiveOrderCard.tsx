@@ -10,12 +10,12 @@ import {
   FileText,
   ChevronRight,
   Store,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ActiveOrder } from '@/types/delivery';
-import { ProofOfDelivery } from './ProofOfDelivery';
 import { Message } from '@/types/delivery';
 
 interface ActiveOrderCardProps {
@@ -25,6 +25,12 @@ interface ActiveOrderCardProps {
   onPickedUp: () => void;
   onComplete: () => void;
   onSendMessage: (message: string) => void;
+  onNavigateToDestination: (
+    latitude: number,
+    longitude: number,
+    type: 'shop' | 'customer',
+    startCoords?: { latitude: number; longitude: number }
+  ) => void;
 }
 
 export function ActiveOrderCard({
@@ -34,31 +40,57 @@ export function ActiveOrderCard({
   onPickedUp,
   onComplete,
   onSendMessage,
+  onNavigateToDestination,
 }: ActiveOrderCardProps) {
-  const [showPOD, setShowPOD] = useState(false);
-  const [podCaptured, setPodCaptured] = useState(false);
+  const [loadingNavigate, setLoadingNavigate] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(false);
+  const [loadingArrived, setLoadingArrived] = useState(false);
+  const [loadingPickup, setLoadingPickup] = useState(false);
+  const [loadingComplete, setLoadingComplete] = useState(false);
 
   const isPickup = order.phase === 'pickup';
   const canPickup = order.isWithinPickupRange && order.arrivedAtShopAt;
 
-  const handleNavigate = () => {
-    const address = isPickup ? order.shop.address : order.customer.address;
-    window.open(`https://maps.google.com/?q=${encodeURIComponent(address)}`, '_blank');
+  const handleNavigate = async () => {
+    setLoadingNavigate(true);
+    try {
+      if (isPickup && order.shop.latitude && order.shop.longitude) {
+        console.log("[ActiveOrderCard] Navigating to shop:", order.shop.latitude, order.shop.longitude);
+        await Promise.resolve(onNavigateToDestination(order.shop.latitude, order.shop.longitude, 'shop'));
+      } else if (!isPickup && order.customer.latitude && order.customer.longitude) {
+        console.log("[ActiveOrderCard] Navigating to customer from restaurant:", order.customer.latitude, order.customer.longitude);
+        const startCoords = order.shop.latitude && order.shop.longitude 
+          ? { latitude: order.shop.latitude, longitude: order.shop.longitude }
+          : undefined;
+        await Promise.resolve(
+          onNavigateToDestination(
+            order.customer.latitude, 
+            order.customer.longitude, 
+            'customer',
+            startCoords
+          )
+        );
+      } else {
+        console.log("[ActiveOrderCard] No valid coordinates for Mapbox, skipping navigation.");
+      }
+    } finally {
+      setTimeout(() => setLoadingNavigate(false), 600);
+    }
   };
 
   const handleCapturePOD = () => {
-    setPodCaptured(true);
-    setShowPOD(false);
+    // Removed Proof of Delivery functionality
   };
 
-  if (showPOD) {
-    return (
-      <ProofOfDelivery
-        onCapture={handleCapturePOD}
-        onClose={() => setShowPOD(false)}
-      />
-    );
-  }
+  // Removed ProofOfDelivery component rendering
+  // if (showPOD) {
+  //   return (
+  //     <ProofOfDelivery
+  //       onCapture={handleCapturePOD}
+  //       onClose={() => setShowPOD(false)}
+  //     />
+  //   );
+  // }
 
   return (
     <div className="space-y-4 animate-enter w-full">
@@ -95,9 +127,9 @@ export function ActiveOrderCard({
               ? "gradient-primary text-white scale-110 ring-4 ring-primary/20 shadow-glow"
               : "bg-secondary text-muted-foreground"
           )}>
-            <User className="w-5 h-5" />
+            {order.pickedUpAt ? <Package className="w-5 h-5" /> : <Navigation2 className="w-5 h-5" />}
           </div>
-          <span className={cn("text-xs font-bold", !isPickup ? "text-primary" : "text-muted-foreground")}>Dropoff</span>
+          <span className={cn("text-xs font-bold", !isPickup ? "text-primary" : "text-muted-foreground")}>On the way</span>
         </div>
       </div>
 
@@ -108,7 +140,7 @@ export function ActiveOrderCard({
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-1">
-                {isPickup ? 'Pick up from' : 'Deliver to'}
+                {isPickup ? 'Pick up from' : 'Delivering to'}
               </p>
               <h2 className="text-xl font-bold text-foreground leading-tight">
                 {isPickup ? order.shop.name : order.customer.name}
@@ -140,23 +172,32 @@ export function ActiveOrderCard({
 
         {/* Content Section */}
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid w-full">
             <Button
               variant="outline"
               className="h-12 rounded-xl border-primary/20 hover:bg-primary/5 text-primary"
+              disabled={loadingNavigate}
               onClick={handleNavigate}
             >
-              <Navigation2 className="w-4 h-4 mr-2" />
+              {loadingNavigate ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Navigation2 className="w-4 h-4 mr-2" />}
               Navigate
             </Button>
-            <Button
+            {/* <Button
               variant="outline"
               className="h-12 rounded-xl border-border hover:bg-secondary"
-              onClick={() => onSendMessage("I'm on my way!")}
+              disabled={loadingMessage}
+              onClick={async () => {
+                setLoadingMessage(true);
+                try {
+                  await Promise.resolve(onSendMessage("I'm on my way!"));
+                } finally {
+                  setTimeout(() => setLoadingMessage(false), 600);
+                }
+              }}
             >
-              <MessageCircle className="w-4 h-4 mr-2" />
+              {loadingMessage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MessageCircle className="w-4 h-4 mr-2" />}
               Message
-            </Button>
+            </Button> */}
           </div>
 
           {/* Pickup Items */}
@@ -180,58 +221,60 @@ export function ActiveOrderCard({
           )}
 
           {/* Dropoff Actions */}
-          {!isPickup && (
-            <button
-              onClick={() => setShowPOD(true)}
-              className={cn(
-                'w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 border-2',
-                podCaptured
-                  ? 'bg-success/10 border-success/30 text-success'
-                  : 'bg-background border-dashed border-border hover:border-primary/50 hover:bg-primary/5'
-              )}
-            >
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center",
-                podCaptured ? "bg-success text-white" : "bg-secondary text-muted-foreground"
-              )}>
-                {podCaptured ? <Check className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-bold text-base">
-                  {podCaptured ? 'Proof Captured' : 'Evidence of Delivery'}
-                </p>
-                <p className="text-xs opacity-70">
-                  {podCaptured ? 'Ready to complete' : 'Required to finish'}
-                </p>
-              </div>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </button>
-          )}
+          {/* Removed "Evidence of Delivery" button as per user request */}
 
           {/* Primary Action Button */}
           <div className="pt-2">
             {isPickup ? (
               !order.arrivedAtShopAt ? (
-                <Button className="w-full h-14 text-lg font-bold rounded-2xl shadow-glow gradient-primary hover:opacity-90 transition-opacity" onClick={onArrivedAtShop}>
-                  I've Arrived at Shop
+                <Button
+                  className="w-full h-14 text-lg font-bold rounded-2xl shadow-glow gradient-primary hover:opacity-90 transition-opacity"
+                  disabled={loadingArrived}
+                  onClick={async () => {
+                    setLoadingArrived(true);
+                    try {
+                      await Promise.resolve(onArrivedAtShop());
+                    } finally {
+                      setTimeout(() => setLoadingArrived(false), 600);
+                    }
+                  }}
+                >
+                  {loadingArrived && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  I&apos;ve Arrived at Shop
                 </Button>
               ) : (
                 <Button
                   className="w-full h-14 text-lg font-bold rounded-2xl"
                   variant={canPickup ? 'default' : 'secondary'}
-                  disabled={!canPickup}
-                  onClick={onPickedUp}
+                  disabled={!canPickup || loadingPickup}
+                  onClick={async () => {
+                    setLoadingPickup(true);
+                    try {
+                      await Promise.resolve(onPickedUp());
+                    } finally {
+                      setTimeout(() => setLoadingPickup(false), 600);
+                    }
+                  }}
                 >
-                  {canPickup ? 'Confirm Pickup' : 'Move Closer to Pickup'}
+                  {loadingPickup && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  <span>{canPickup ? 'Confirm Pickup' : 'Move Closer to Pickup'}</span>
                 </Button>
               )
             ) : (
               <Button
                 className="w-full h-14 text-lg font-bold rounded-2xl shadow-glow gradient-success hover:opacity-90 transition-opacity"
-                onClick={onComplete}
-                disabled={!podCaptured}
+                disabled={loadingComplete}
+                onClick={async () => {
+                  setLoadingComplete(true);
+                  try {
+                    await Promise.resolve(onComplete());
+                  } finally {
+                    setTimeout(() => setLoadingComplete(false), 600);
+                  }
+                }}
               >
-                Complete Delivery
+                {loadingComplete && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <span>Complete Delivery</span>
               </Button>
             )}
           </div>

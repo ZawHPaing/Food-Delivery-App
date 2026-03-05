@@ -335,7 +335,7 @@ export default function MenuManagementPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
+        <h1 className="text-3xl font-bold">
           Menu Management
         </h1>
         <div className="space-x-3">

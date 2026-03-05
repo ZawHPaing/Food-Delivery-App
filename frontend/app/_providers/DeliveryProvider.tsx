@@ -17,6 +17,7 @@ interface DeliveryContextValue {
   incomingRequests: DeliveryRequest[];
   activeOrder: ActiveOrder | null;
   messages: Message[];
+  currentLocation?: { latitude: number; longitude: number } | null;
   setStatus: (status: DriverStatus) => void;
   setVehicle: (vehicle: VehicleType) => void;
   toggleOnline: () => void;
@@ -38,9 +39,14 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
   const [incomingRequests, setIncomingRequests] = useState<DeliveryRequest[]>([]);
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [hasDBLocation, setHasDBLocation] = useState(false);
 
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const userId = user?.id;
+  const storageUserId =
+    (user as { id?: string | number })?.id ??
+    (user as { rider?: { user_id?: number } })?.rider?.user_id;
   const websocketUserId =
     Number((user as { id?: string | number })?.id) ||
     (user as { rider?: { user_id?: number } })?.rider?.user_id ||
@@ -48,14 +54,23 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
   const socketRef = useRef<WebSocket | null>(null);
   const isInitialized = useRef(false);
 
+  console.log("[DeliveryProvider] Initializing with user:", user);
+  console.log("[DeliveryProvider] websocketUserId:", websocketUserId);
+  console.log("[DeliveryProvider] riderId:", (user as { rider?: { id?: number } })?.rider?.id);
+
   useEffect(() => {
     setIsClient(true);
-    if (!userId) return;
+    const keyId = storageUserId != null ? String(storageUserId) : null;
 
-    const savedStatus = localStorage.getItem(`driver_status_${userId}`) as DriverStatus | null;
-    const savedVehicle = localStorage.getItem(`driver_vehicle_${userId}`) as VehicleType | null;
-    const savedShift = localStorage.getItem(`driver_shift_start_${userId}`);
-    const savedOrder = localStorage.getItem(`driver_active_order_${userId}`);
+    const savedStatus = keyId
+      ? (localStorage.getItem(`driver_status_${keyId}`) as DriverStatus | null)
+      : null;
+    const savedVehicle = keyId
+      ? (localStorage.getItem(`driver_vehicle_${keyId}`) as VehicleType | null)
+      : null;
+    const savedShift = keyId ? localStorage.getItem(`driver_shift_start_${keyId}`) : null;
+    const savedOrder = keyId ? localStorage.getItem(`driver_active_order_${keyId}`) : null;
+    const savedIncoming = keyId ? localStorage.getItem(`driver_incoming_requests_${keyId}`) : null;
 
     if (savedStatus) {
       setStatus(savedStatus);
@@ -82,27 +97,54 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
     }
+    if (savedIncoming) {
+      try {
+        const parsed: DeliveryRequest[] = JSON.parse(savedIncoming);
+        const now = Date.now();
+        const restored = parsed
+          .map((r) => ({
+            ...r,
+            expiresAt: r.expiresAt ? new Date(r.expiresAt as unknown as string) : new Date(now + 60000),
+          }))
+          .filter((r) => (r.expiresAt ? r.expiresAt.getTime() > now : true));
+        setIncomingRequests(restored);
+      } catch {
+        // ignore
+      }
+    }
 
     isInitialized.current = true;
-  }, [userId, user?.rider?.status]);
+  }, [storageUserId, user?.rider?.status]);
 
   useEffect(() => {
-    if (!isClient || !userId || !isInitialized.current) return;
+    if (!isClient || !isInitialized.current) return;
+    const keyId = storageUserId != null ? String(storageUserId) : null;
+    if (!keyId) return;
 
-    localStorage.setItem(`driver_status_${userId}`, status);
-    localStorage.setItem(`driver_vehicle_${userId}`, vehicle);
+    localStorage.setItem(`driver_status_${keyId}`, status);
+    localStorage.setItem(`driver_vehicle_${keyId}`, vehicle);
     if (shiftStartTime) {
-      localStorage.setItem(`driver_shift_start_${userId}`, shiftStartTime.toISOString());
+      localStorage.setItem(`driver_shift_start_${keyId}`, shiftStartTime.toISOString());
     } else {
-      localStorage.removeItem(`driver_shift_start_${userId}`);
+      localStorage.removeItem(`driver_shift_start_${keyId}`);
     }
 
     if (activeOrder) {
-      localStorage.setItem(`driver_active_order_${userId}`, JSON.stringify(activeOrder));
+      localStorage.setItem(`driver_active_order_${keyId}`, JSON.stringify(activeOrder));
     } else {
-      localStorage.removeItem(`driver_active_order_${userId}`);
+      localStorage.removeItem(`driver_active_order_${keyId}`);
     }
-  }, [status, vehicle, shiftStartTime, activeOrder, isClient, userId]);
+    console.log("[DeliveryProvider] State saved:", { status, vehicle, shiftStartTime, activeOrder });
+  }, [status, vehicle, shiftStartTime, activeOrder, isClient, storageUserId]);
+
+  useEffect(() => {
+    if (!isClient || !isInitialized.current) return;
+    const keyId = storageUserId != null ? String(storageUserId) : null;
+    if (!keyId) return;
+    const now = Date.now();
+    const pruned = incomingRequests.filter((r) => (r.expiresAt ? new Date(r.expiresAt as unknown as string).getTime() > now : true));
+    localStorage.setItem(`driver_incoming_requests_${keyId}`, JSON.stringify(pruned));
+  }, [incomingRequests, isClient, storageUserId]);
 
   useEffect(() => {
     if (!isClient || !websocketUserId || (status !== "online" && status !== "busy")) return;
@@ -116,15 +158,34 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rider_id: riderId, latitude, longitude }),
         });
+        setCurrentLocation({ latitude, longitude });
       } catch {
-        // ignore
       }
     };
 
     const FALLBACK_LAT = 16.8661;
     const FALLBACK_LNG = 96.1951;
 
-    const updateLocation = () => {
+    const fetchDBLocation = async () => {
+      const riderId = (user as { rider?: { id?: number } })?.rider?.id;
+      if (!riderId) return false;
+      try {
+        const res = await fetch(`http://localhost:8000/delivery/location?rider_id=${riderId}`);
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+          setCurrentLocation({ latitude: data.latitude, longitude: data.longitude });
+          setHasDBLocation(true);
+          return true;
+        }
+      } catch {
+      }
+      return false;
+    };
+
+    const updateLocation = async () => {
+      const has = await fetchDBLocation();
+      if (has) return;
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           (position) => sendLocation(position.coords.latitude, position.coords.longitude),
@@ -137,9 +198,14 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     };
 
     updateLocation();
-    const interval = setInterval(updateLocation, 30000);
-    return () => clearInterval(interval);
-  }, [isClient, websocketUserId, status, user]);
+    let interval: any = null;
+    if (!hasDBLocation) {
+      interval = setInterval(updateLocation, 30000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isClient, websocketUserId, status, user, hasDBLocation]);
 
   useEffect(() => {
     if (status !== "online" || !websocketUserId) {
@@ -166,7 +232,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     };
 
     socket.onmessage = (event) => {
-      let data: { type?: string; order_id?: number; request_id?: number; [k: string]: unknown };
+      let data: any;
       try {
         data = JSON.parse(event.data);
       } catch {
@@ -179,21 +245,26 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
           requestId: String(data.request_id),
           shop: {
             id: String(data.order_id),
-            name: data.restaurant_name,
+            name: String(data.restaurant_name ?? ""),
             address: "Restaurant Address",
-            distance: data.distance,
+            distance: Number(data.distance ?? 0),
+            latitude: Number(data.restaurant_latitude) || undefined,
+            longitude: Number(data.restaurant_longitude) || undefined,
           },
-          items: (data.items || []).map((item: { name?: string; quantity?: number }, idx: number) => ({
+          items: Array.isArray(data.items) ? data.items.map((item: { name?: string; quantity?: number }, idx: number) => ({
             id: `item-${idx}`,
             name: item.name ?? "Item",
             quantity: item.quantity ?? 0,
-          })),
+          })) : [],
           customer: {
             id: "c1",
-            name: data.customer_name ?? "",
-            address: data.delivery_address ?? "",
+            name: String(data.customer_name || "Customer"),
+            address: String(data.delivery_address || ""),
+            latitude: Number(data.delivery_latitude) || undefined,
+            longitude: Number(data.delivery_longitude) || undefined,
+            phone: String(data.customer_phone || ""),
           },
-          deliveryDistance: data.distance_to_customer ?? data.distance ?? 0,
+          deliveryDistance: Number(data.distance_to_customer) || Number(data.distance) || 0,
           estimatedPickupTime: 5,
           estimatedDeliveryTime: 15,
           expiresAt: new Date(data.expires_at ?? Date.now() + 60000),
@@ -217,7 +288,10 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) return;
         const data = await res.json();
         const requests = data.requests || [];
-        if (requests.length === 0) return;
+        if (requests.length === 0) {
+          console.log("[DeliveryProvider] Polling: No new requests.");
+          return;
+        }
         setIncomingRequests((prev) => {
           const byRequestId = new Map(prev.map((r) => [r.requestId, r]));
           for (const d of requests) {
@@ -232,6 +306,8 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
                   name: d.restaurant_name ?? "",
                   address: "Restaurant Address",
                   distance: d.distance ?? 0,
+                  latitude: Number(d.restaurant_latitude) || undefined,
+                  longitude: Number(d.restaurant_longitude) || undefined,
                 },
                 items: (d.items || []).map((item: { name?: string; quantity?: number }, idx: number) => ({
                   id: `item-${idx}`,
@@ -240,17 +316,22 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
                 })),
                 customer: {
                   id: "c1",
-                  name: d.customer_name ?? "",
-                  address: d.delivery_address ?? "",
+                  name: String(d.customer_name || "Customer"),
+                  address: String(d.delivery_address || ""),
+                  latitude: Number(d.delivery_latitude) || undefined,
+                  longitude: Number(d.delivery_longitude) || undefined,
+                  phone: String(d.customer_phone || ""),
                 },
-                deliveryDistance: d.distance_to_customer ?? d.distance ?? 0,
+                deliveryDistance: Number(d.distance_to_customer) || Number(d.distance) || 0,
                 estimatedPickupTime: 5,
                 estimatedDeliveryTime: 15,
                 expiresAt: new Date(d.expires_at ?? Date.now() + 60000),
               });
             }
           }
-          return Array.from(byRequestId.values());
+          const updatedRequests = Array.from(byRequestId.values());
+          console.log("[DeliveryProvider] Polling: Incoming requests updated.", updatedRequests);
+          return updatedRequests;
         });
       } catch {
         // ignore
@@ -288,7 +369,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
 
   const requestAndSendCurrentLocation = async () => {
     const riderId = (user as { rider?: { id?: number } })?.rider?.id;
-    if (!riderId || !("geolocation" in navigator)) return;
+    if (!riderId) return;
 
     const FALLBACK_LAT = 16.8661;
     const FALLBACK_LNG = 96.1951;
@@ -300,10 +381,28 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rider_id: riderId, latitude, longitude }),
         });
+        setCurrentLocation({ latitude, longitude });
       } catch {
-        // ignore
       }
     };
+
+    try {
+      const res = await fetch(`http://localhost:8000/delivery/location?rider_id=${riderId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+          setCurrentLocation({ latitude: data.latitude, longitude: data.longitude });
+          setHasDBLocation(true);
+          return;
+        }
+      }
+    } catch {
+    }
+
+    if (!("geolocation" in navigator)) {
+      await postLocation(FALLBACK_LAT, FALLBACK_LNG);
+      return;
+    }
 
     await new Promise<void>((resolve) => {
       navigator.geolocation.getCurrentPosition(
@@ -337,6 +436,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     }
 
     await updateBackendStatus(nextStatus);
+    console.log("[DeliveryProvider] Toggled online status to:", nextStatus);
   }, [status, user]);
 
   const acceptOrder = useCallback(
@@ -349,21 +449,30 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
           `http://localhost:8000/delivery/requests/${request.requestId}/respond?action=accept&rider_id=${riderId}`,
           { method: "POST" }
         );
+        console.log("[DeliveryProvider] Accept Order Response Status:", res.status);
+        const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
           setActiveOrder({
             id: request.id,
+            deliveryId: data.delivery_id ? parseInt(data.delivery_id) : undefined,
             phase: "pickup",
-            shop: request.shop,
+            shop: {
+              ...request.shop,
+              latitude: request.shop.latitude,
+              longitude: request.shop.longitude,
+            },
             items: request.items,
             customer: request.customer,
             isWithinPickupRange: false,
           });
           setStatus("busy");
           setIncomingRequests([]);
+        } else {
+          console.error("[DeliveryProvider] Accept Order Error:", res.status, data);
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error("[DeliveryProvider] Accept Order Exception:", err);
       }
     },
     [user]
@@ -400,21 +509,60 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeOrder]);
 
-  const pickupOrder = useCallback(() => {
-    if (activeOrder) {
+  const pickupOrder = useCallback(async () => {
+    if (activeOrder && activeOrder.deliveryId) {
+      const riderId = (user as { rider?: { id?: number } })?.rider?.id;
+      if (!riderId) return;
+
+      try {
+        const res = await fetch(
+          `http://localhost:8000/delivery/deliveries/${activeOrder.deliveryId}/pickup?rider_id=${riderId}`,
+          { method: "POST" }
+        );
+        if (res.ok) {
+          setActiveOrder({
+            ...activeOrder,
+            phase: "dropoff",
+            pickedUpAt: new Date(),
+          });
+        }
+      } catch (err) {
+        console.error("[DeliveryProvider] Pickup Error:", err);
+      }
+    } else if (activeOrder) {
+      // Fallback for local-only if deliveryId is missing
       setActiveOrder({
         ...activeOrder,
         phase: "dropoff",
         pickedUpAt: new Date(),
       });
     }
-  }, [activeOrder]);
+  }, [activeOrder, user]);
 
-  const completeOrder = useCallback(() => {
-    setActiveOrder(null);
-    setMessages([]);
-    setStatus("online");
-  }, []);
+  const completeOrder = useCallback(async () => {
+    if (activeOrder && activeOrder.deliveryId) {
+      const riderId = (user as { rider?: { id?: number } })?.rider?.id;
+      if (!riderId) return;
+
+      try {
+        const res = await fetch(
+          `http://localhost:8000/delivery/deliveries/${activeOrder.deliveryId}/deliver?rider_id=${riderId}`,
+          { method: "POST" }
+        );
+        if (res.ok) {
+          setActiveOrder(null);
+          setMessages([]);
+          setStatus("online");
+        }
+      } catch (err) {
+        console.error("[DeliveryProvider] Complete Error:", err);
+      }
+    } else {
+      setActiveOrder(null);
+      setMessages([]);
+      setStatus("online");
+    }
+  }, [activeOrder, user]);
 
   const sendMessage = useCallback((content: string) => {
     const newMessage: Message = {
@@ -448,8 +596,34 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
       incomingRequests,
       activeOrder,
       messages,
+      currentLocation,
       setStatus,
-      setVehicle,
+      setVehicle: async (newVehicle: VehicleType) => {
+        const rider = (user as any)?.rider;
+        const riderId = rider?.id;
+        if (riderId) {
+          try {
+            await fetch("http://localhost:8000/delivery/vehicle", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ rider_id: riderId, vehicle: newVehicle }),
+            });
+            
+            // Update auth profile state to sync across UI components
+            if (updateProfile && rider) {
+              updateProfile({
+                rider: {
+                  ...rider,
+                  vehicle_type: newVehicle
+                }
+              } as any);
+            }
+          } catch (err) {
+            console.error("[DeliveryProvider] Failed to update vehicle on backend:", err);
+          }
+        }
+        setVehicle(newVehicle);
+      },
       toggleOnline,
       acceptOrder,
       declineOrder,
@@ -465,6 +639,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
       incomingRequests,
       activeOrder,
       messages,
+      currentLocation,
       toggleOnline,
       acceptOrder,
       declineOrder,

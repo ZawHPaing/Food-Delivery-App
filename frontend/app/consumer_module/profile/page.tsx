@@ -57,6 +57,8 @@ export default function ProfilePage() {
     country: "",
     label: "",
     is_default: false,
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
 
   const loadData = async () => {
@@ -175,6 +177,20 @@ export default function ProfilePage() {
     e.preventDefault();
     setSaving(true);
     setMessage(null);
+
+    let currentLatitude = addressForm.latitude;
+    let currentLongitude = addressForm.longitude;
+
+    try {
+      const { latitude, longitude } = await getUserLocation();
+      currentLatitude = latitude;
+      currentLongitude = longitude;
+      setMessage({ type: "ok", text: "Location captured." });
+    } catch (error) {
+      console.warn("Could not get user location:", error);
+      setMessage({ type: "err", text: "Could not get current location. Address will be saved without coordinates." });
+    }
+
     try {
       await createAddress({
         street: addressForm.street || undefined,
@@ -184,6 +200,8 @@ export default function ProfilePage() {
         country: addressForm.country,
         label: addressForm.label || undefined,
         is_default: addressForm.is_default,
+        latitude: currentLatitude || undefined,
+        longitude: currentLongitude || undefined,
       });
       await loadData();
       setShowAddAddress(false);
@@ -195,8 +213,12 @@ export default function ProfilePage() {
         country: "",
         label: "",
         is_default: false,
+        latitude: null,
+        longitude: null,
       });
-      setMessage({ type: "ok", text: "Address added." });
+      if (!message || message.type !== "err") { // Only show success if no prior error message
+        setMessage({ type: "ok", text: "Address added." });
+      }
     } catch (err) {
       setMessage({ type: "err", text: err instanceof Error ? err.message : "Failed to add address" });
     } finally {
@@ -210,6 +232,20 @@ export default function ProfilePage() {
     if (!addr) return;
     setSaving(true);
     setMessage(null);
+
+    let currentLatitude = addressForm.latitude;
+    let currentLongitude = addressForm.longitude;
+
+    try {
+      const { latitude, longitude } = await getUserLocation();
+      currentLatitude = latitude;
+      currentLongitude = longitude;
+      setMessage({ type: "ok", text: "Location captured." });
+    } catch (error) {
+      console.warn("Could not get user location for update:", error);
+      setMessage({ type: "err", text: "Could not get current location. Address will be updated without new coordinates." });
+    }
+
     try {
       await updateAddress(id, {
         street: addressForm.street || undefined,
@@ -219,10 +255,14 @@ export default function ProfilePage() {
         country: addressForm.country,
         label: addressForm.label || undefined,
         is_default: addressForm.is_default,
+        latitude: currentLatitude || undefined,
+        longitude: currentLongitude || undefined,
       });
       await loadData();
       setEditingAddressId(null);
-      setMessage({ type: "ok", text: "Address updated." });
+      if (!message || message.type !== "err") { // Only show success if no prior error message
+        setMessage({ type: "ok", text: "Address updated." });
+      }
     } catch (err) {
       setMessage({ type: "err", text: err instanceof Error ? err.message : "Failed to update" });
     } finally {
@@ -256,12 +296,47 @@ export default function ProfilePage() {
       country: a.country,
       label: a.label ?? "",
       is_default: a.is_default,
+      latitude: a.latitude ?? null,
+      longitude: a.longitude ?? null,
     });
   };
 
   const cancelAddressForm = () => {
     setShowAddAddress(false);
     setEditingAddressId(null);
+    setAddressForm({
+      street: "",
+      city: "",
+      state: "",
+      postal_code: "",
+      country: "",
+      label: "",
+      is_default: false,
+      latitude: null,
+      longitude: null,
+    });
+  };
+
+  const getUserLocation = (): Promise<{ latitude: number; longitude: number }> => {
+    return new Promise((resolve, reject) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          },
+          (error) => {
+            console.error("Error getting location:", error);
+            reject(new Error("Failed to get location. Please allow location access."));
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      } else {
+        reject(new Error("Geolocation is not supported by your browser."));
+      }
+    });
   };
 
   if (!isLoggedIn) {

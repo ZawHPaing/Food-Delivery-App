@@ -9,6 +9,8 @@ export interface Shop {
   name: string;
   address: string;
   distance: number; // in km
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface OrderItem {
@@ -21,6 +23,8 @@ export interface Customer {
   id: string;
   name: string;
   address: string;
+  latitude?: number;
+  longitude?: number;
   notes?: string;
   phone?: string;
 }
@@ -41,12 +45,13 @@ export interface DeliveryRequest {
 export interface ActiveOrder {
   id: string;
   phase: OrderPhase;
-  shop: Shop;
+  deliveryId?: number;
   items: OrderItem[];
   customer: Customer;
   pickedUpAt?: Date;
   arrivedAtShopAt?: Date;
   isWithinPickupRange: boolean;
+  shop: Shop & { latitude?: number; longitude?: number };
 }
 
 export interface Message {

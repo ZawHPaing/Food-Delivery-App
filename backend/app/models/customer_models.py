@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator
 import re
+from pydantic import BaseModel
 from typing import List, Optional
 
 # ----- Address (schema: street, city, state, postal_code, country, label, latitude, longitude, is_default) -----

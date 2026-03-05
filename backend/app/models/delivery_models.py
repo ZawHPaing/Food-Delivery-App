@@ -20,6 +20,10 @@ class UpdateRiderStatusRequest(BaseModel):
     rider_id: int
     status: str
 
+class UpdateVehicleRequest(BaseModel):
+    rider_id: int
+    vehicle: str
+
 # Response Models
 class RiderLoginResponse(BaseModel):
     message: str

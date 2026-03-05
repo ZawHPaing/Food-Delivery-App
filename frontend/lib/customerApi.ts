@@ -111,6 +111,8 @@ export async function createAddress(data: {
   country: string;
   label?: string;
   is_default?: boolean;
+  latitude?: number;
+  longitude?: number;
 }): Promise<AddressRecord> {
   return customerFetch<AddressRecord>("/customer/addresses", {
     method: "POST",
@@ -128,6 +130,8 @@ export async function updateAddress(
     country: string;
     label: string;
     is_default: boolean;
+    latitude?: number;
+    longitude?: number;
   }>
 ): Promise<AddressRecord> {
   return customerFetch<AddressRecord>(`/customer/addresses/${id}`, {

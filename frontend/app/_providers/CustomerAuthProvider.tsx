@@ -169,7 +169,9 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
           first_name: u.first_name ?? data.first_name,
           last_name: u.last_name ?? data.last_name,
         };
-
+        
+        console.log("Registration response user type:", user.user_type); // Debug log
+        
         setState({ isLoggedIn: true, user, token });
         persistState(user, token);
       },

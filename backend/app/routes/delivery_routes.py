@@ -5,6 +5,7 @@ from ..models.delivery_models import (
     RiderLoginRequest, RiderLoginResponse,
     RiderSignUpRequest, RiderSignUpResponse,
     UpdateRiderStatusRequest, UpdateStatusResponse,
+    UpdateVehicleRequest,
     DeliveryHistoryResponse, RiderProfileResponse
 )
 from ..services.delivery_service import DeliveryService
@@ -12,6 +13,7 @@ from ..services.dispatch_service import DispatchService
 from ..repositories.delivery_repo import DeliveryRepository
 from ..repositories.dispatch_repo import DispatchRepository
 from ..core.websocket_manager import manager
+from ..core.location_utils import haversine_distance
 import logging
 
 log = logging.getLogger(__name__)
@@ -136,6 +138,22 @@ def update_rider_location(body: RiderLocationBody):
         raise HTTPException(status_code=400, detail="Failed to update location")
     return {"success": True}
 
+@router.get("/location")
+def get_rider_location(rider_id: int = Query(..., description="Rider ID")):
+    loc = DeliveryRepository.get_rider_location(rider_id)
+    if not loc:
+        return {"latitude": None, "longitude": None}
+    lat = loc.get("current_latitude") or loc.get("latitude")
+    lng = loc.get("current_longitude") or loc.get("longitude")
+    return {"latitude": lat, "longitude": lng}
+
+@router.post("/vehicle", response_model=UpdateStatusResponse)
+def update_vehicle(request: UpdateVehicleRequest):
+    """Update rider vehicle type"""
+    success = DeliveryService.update_rider_vehicle(request.rider_id, request.vehicle)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to update vehicle")
+    return {"success": True, "status": request.vehicle}
 
 @router.get("/requests")
 def get_pending_requests(rider_id: int = Query(..., description="Rider ID")):
@@ -149,7 +167,23 @@ def get_pending_requests(rider_id: int = Query(..., description="Rider ID")):
         order_details = DispatchRepository.get_order_details(order_id)
         if not order_details:
             continue
-        payload = DispatchService._build_request_payload(order_details, req, distance=0.0)
+        
+        # Calculate distance to customer if coordinates are available
+        distance_to_customer = 0.0
+        rider_location = DeliveryRepository.get_rider_location(rider_id)
+        if rider_location and \
+           rider_location.get("current_latitude") is not None and \
+           rider_location.get("current_longitude") is not None and \
+           order_details.get("delivery_latitude") is not None and \
+           order_details.get("delivery_longitude") is not None:
+            distance_to_customer = haversine_distance(
+                rider_location["current_latitude"],
+                rider_location["current_longitude"],
+                order_details["delivery_latitude"],
+                order_details["delivery_longitude"]
+            )
+        
+        payload = DispatchService._build_request_payload(order_details, req, distance=distance_to_customer)
         out.append(payload)
     return {"requests": out}
 
@@ -164,12 +198,12 @@ async def respond_to_dispatch_request(
     Rider accepts or rejects a delivery request.
     On accept: creates delivery, sets order status to rider_assigned, notifies customer.
     """
-    success, customer_user_id, err = DeliveryService.respond_to_dispatch_request(
+    success, customer_user_id, delivery_id_str = DeliveryService.respond_to_dispatch_request(
         request_id, rider_id, action
     )
     if not success:
-        raise HTTPException(status_code=400, detail=err or "Failed to respond")
-    # Notify customer so Order Progress updates in real time
+        raise HTTPException(status_code=400, detail=delivery_id_str or "Failed to respond")
+    # On accept: notify customer so Order Progress updates in real time
     if customer_user_id is not None:
         from ..repositories.dispatch_repo import DispatchRepository
         req = DispatchRepository.get_dispatch_request_by_id(request_id)
@@ -179,7 +213,15 @@ async def respond_to_dispatch_request(
                 int(customer_user_id),
                 {"type": "ORDER_STATUS_UPDATE", "order_id": order_id, "status": "rider_assigned"},
             )
-    return {"success": True, "action": action}
+    # On reject: re-dispatch to next nearest rider
+    if action == "reject":
+        from ..repositories.dispatch_repo import DispatchRepository
+        req = DispatchRepository.get_dispatch_request_by_id(request_id)
+        if req:
+            order_id = req.get("order_id")
+            if order_id:
+                await DispatchService.dispatch_order(int(order_id))
+    return {"success": True, "action": action, "delivery_id": delivery_id_str if action == "accept" else None}
 
 
 @router.post("/deliveries/{delivery_id}/pickup")

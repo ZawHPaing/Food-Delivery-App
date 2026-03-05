@@ -9,6 +9,8 @@ import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import EventBannerSlider from "@/components/ui/EventBannerSlider";
 import type { FilterOptions, SortOption } from "@/components/ui/FilterOverlay";
 import { getRestaurantsFromApi, getRestaurantWithMenuFromApi } from "@/lib/discoveryApi";
+import { useAuth } from "@/app/_providers/AuthProvider";
+import { LocationPickerModal } from "@/components/ui/LocationPickerModal";
 
 const transformRestaurant = (r: { 
   id: number; 
@@ -18,7 +20,8 @@ const transformRestaurant = (r: {
   deliveryTime?: string; 
   deliveryFee?: string; 
   distance?: string; 
-  image_url?: string | null 
+  image_url?: string | null;
+  image?: string;
 }, isPromoted = false) => ({
   id: String(r.id),
   name: r.name,
@@ -27,11 +30,11 @@ const transformRestaurant = (r: {
   deliveryTime: r.deliveryTime ?? "25-35 min",
   deliveryFee: r.deliveryFee ?? "Free",
   distance: r.distance,
-  image: r.image_url ?? undefined,
+  image: r.image_url ?? r.image ?? undefined,
   isPromoted,
 });
 
-// Offers/Promotions data - kept for banners
+// Offers/Promotions data
 const offers = [
   {
     id: "1",
@@ -84,6 +87,7 @@ type RestaurantRow = {
   deliveryFee?: string;
   distance?: string;
   image_url?: string | null;
+  image?: string;
   isOpen?: boolean;
 };
 
@@ -101,6 +105,84 @@ export default function Home() {
     maxDeliveryTime: null,
   });
   const [sortBy, setSortBy] = useState<SortOption>("popularity");
+
+  const { user, isLoggedIn } = useAuth();
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [userAddresses, setUserAddresses] = useState<any[]>([]);
+
+  const checkLocation = async () => {
+    console.log("[LocationCheck] isLoggedIn:", isLoggedIn);
+    if (!isLoggedIn) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.warn("[LocationCheck] isLoggedIn is true but no token found");
+        return;
+      }
+
+      console.log("[LocationCheck] Fetching addresses...");
+      const res = await fetch("http://localhost:8000/customer/addresses", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      console.log("[LocationCheck] Response status:", res.status);
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("[LocationCheck] Fetch failed:", res.status, errText);
+        return;
+      }
+
+      const addresses = await res.json();
+      console.log("[LocationCheck] Received addresses:", addresses);
+      setUserAddresses(addresses);
+
+      const hasLocation = addresses.some((a: any) => a.latitude && a.longitude);
+      console.log("[LocationCheck] hasLocation coordinates:", hasLocation);
+      
+      // Show modal on every reload if logged in
+      console.log("[LocationCheck] Opening modal as requested for every reload");
+      setIsLocationModalOpen(true);
+    } catch (err) {
+      console.error("[LocationCheck] Error:", err);
+    }
+  };
+
+  const handleSaveLocation = async (addressData: any) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      
+      // If user has an address, update the first one. Otherwise create new.
+      const method = userAddresses.length > 0 ? "PATCH" : "POST";
+      const url = userAddresses.length > 0 
+        ? `http://localhost:8000/customer/addresses/${userAddresses[0].id}`
+        : "http://localhost:8000/customer/addresses";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...addressData,
+          label: "Home",
+          is_default: true,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to save location");
+      
+      // Refresh addresses and close modal
+      await checkLocation();
+      setIsLocationModalOpen(false);
+    } catch (err) {
+      console.error("Save location error:", err);
+      throw err;
+    }
+  };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -184,7 +266,11 @@ export default function Home() {
         console.error('Error fetching data for home page:', error);
       })
       .finally(() => setLoading(false));
-  }, []);
+
+    if (isLoggedIn) {
+      checkLocation();
+    }
+  }, [isLoggedIn]);
 
   const featuredRestaurants = restaurantsList.slice(0, 4).map((r, i) => transformRestaurant(r, i < 3));
   const popularRestaurants = [...restaurantsList]
@@ -242,6 +328,14 @@ export default function Home() {
         </div>
       )}
       
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onSave={handleSaveLocation}
+        existingAddress={userAddresses[0]}
+      />
+      
       {/* Main Page Content */}
       <main className="py-6">
         {loading && (
@@ -251,79 +345,79 @@ export default function Home() {
           </div>
         )}
         {!loading && (
-        <>
-        {/* Event Banner Slider */}
-        <section className="mb-8">
-          <div className="container mx-auto px-4">
-            <EventBannerSlider />
-          </div>
-        </section>
+          <>
+            {/* Event Banner Slider */}
+            <section className="mb-8">
+              <div className="container mx-auto px-4">
+                <EventBannerSlider />
+              </div>
+            </section>
 
-        {/* Search Section */}
-        <section className="mb-6">
-          <div className="container mx-auto px-4">
-            <div className="max-w-5xl mx-auto">
-              <SearchBar 
-                onSearch={handleSearch} 
-                onFiltersChange={handleFiltersChange}
-                onFocusChange={handleSearchFocusChange}
-                isOverlayMode={false}
+            {/* Search Section */}
+            <section className="mb-6">
+              <div className="container mx-auto px-4">
+                <div className="max-w-5xl mx-auto">
+                  <SearchBar 
+                    onSearch={handleSearch} 
+                    onFiltersChange={handleFiltersChange}
+                    onFocusChange={handleSearchFocusChange}
+                    isOverlayMode={false}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Category Filter */}
+            <section className="mb-8">
+              <CategoryFilter onCategorySelect={handleCategorySelect} />
+            </section>
+
+            {/* Popular Orders Section */}
+            {popularFoods.length > 0 && (
+              <HorizontalScrollSection
+                title="Popular Orders"
+                subtitle="Most ordered foods right now"
+                items={popularFoods}
+                type="foods"
               />
-            </div>
-          </div>
-        </section>
+            )}
 
-        {/* Category Filter */}
-        <section className="mb-8">
-          <CategoryFilter onCategorySelect={handleCategorySelect} />
-        </section>
-
-        {/* Popular Orders Section */}
-        {popularFoods.length > 0 && (
-          <HorizontalScrollSection
-            title="Popular Orders"
-            subtitle="Most ordered foods right now"
-            items={popularFoods}
-            type="foods"
-          />
-        )}
-
-        {/* Super Restaurants Section */}
-        {superRestaurants.length > 0 && (
-          <HorizontalScrollSection
-            title="Nearest Restaurants"
-            subtitle="Closest picks with great ratings"
-            items={superRestaurants}
-            type="restaurants"
-          />
-        )}
-
-        {/* Featured Restaurants Grid */}
-        {featuredRestaurants.length > 0 && (
-          <section className="mb-8">
-            <div className="container mx-auto px-4">
-              <RestaurantGrid
-                title="Featured Restaurants"
-                restaurants={featuredRestaurants}
-                showViewAll={true}
+            {/* Super Restaurants Section */}
+            {superRestaurants.length > 0 && (
+              <HorizontalScrollSection
+                title="Nearest Restaurants"
+                subtitle="Closest picks with great ratings"
+                items={superRestaurants}
+                type="restaurants"
               />
-            </div>
-          </section>
-        )}
+            )}
 
-        {/* Popular Restaurants Grid */}
-        {popularRestaurants.length > 0 && (
-          <section className="mb-8">
-            <div className="container mx-auto px-4">
-              <RestaurantGrid
-                title="Popular Restaurants"
-                restaurants={popularRestaurants}
-                showViewAll={true}
-              />
-            </div>
-          </section>
-        )}
-        </>
+            {/* Featured Restaurants Grid */}
+            {featuredRestaurants.length > 0 && (
+              <section className="mb-8">
+                <div className="container mx-auto px-4">
+                  <RestaurantGrid
+                    title="Featured Restaurants"
+                    restaurants={featuredRestaurants}
+                    showViewAll={true}
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Popular Restaurants Grid */}
+            {popularRestaurants.length > 0 && (
+              <section className="mb-8">
+                <div className="container mx-auto px-4">
+                  <RestaurantGrid
+                    title="Popular Restaurants"
+                    restaurants={popularRestaurants}
+                    showViewAll={true}
+                  />
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 
@@ -389,6 +483,26 @@ export default function Home() {
                 <li>
                   <a href="#" className="hover:text-white transition-colors">
                     FAQs
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Cookie Policy
                   </a>
                 </li>
               </ul>

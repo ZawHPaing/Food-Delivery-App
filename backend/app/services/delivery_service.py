@@ -100,18 +100,26 @@ class DeliveryService:
         """
         req = DispatchRepository.get_dispatch_request_by_id(request_id)
         if not req:
+            print(f"[DeliveryService] Request {request_id} not found.")
             return False, None, "Request not found"
         if str(req.get("status")) != "pending":
+            print(f"[DeliveryService] Request {request_id} status is not pending: {req.get('status')}.")
             return False, None, "Request already responded"
         if int(req.get("rider_id", 0)) != int(rider_id):
+            print(f"[DeliveryService] Rider ID mismatch for request {request_id}. Expected {req.get('rider_id')}, got {rider_id}.")
             return False, None, "Rider does not match request"
         order_id = int(req["order_id"])
 
         if action == "reject":
             DispatchRepository.update_dispatch_status(request_id, "rejected")
+            try:
+                DispatchRepository.expire_rider_pending_requests_for_order(order_id, rider_id)
+            except Exception:
+                pass
             return True, None, ""
 
         if action != "accept":
+            print(f"[DeliveryService] Invalid action for request {request_id}: {action}.")
             return False, None, "Invalid action"
 
         # Get order to find customer user_id for WebSocket notify
@@ -124,7 +132,10 @@ class DeliveryService:
         # Create delivery row (order_id, rider_id)
         delivery = DeliveryRepository.create_delivery(order_id, rider_id, status="assigned")
         if not delivery:
+            print(f"[DeliveryService] Failed to create delivery for order {order_id}, rider {rider_id}.")
             return False, None, "Failed to create delivery"
+        
+        delivery_id = delivery.get("id")
 
         # Update order status so customer Order Progress shows "Rider Assigned"
         from datetime import datetime
@@ -134,7 +145,7 @@ class DeliveryService:
         DispatchRepository.update_dispatch_status(request_id, "accepted")
         DispatchRepository.expire_other_requests_for_order(order_id, request_id)
 
-        return True, customer_user_id, ""
+        return True, customer_user_id, str(delivery_id) if delivery_id else ""
 
     @staticmethod
     def update_delivery_progress(
@@ -247,3 +258,10 @@ class DeliveryService:
         if status not in ["available", "unavailable"]:
             return False
         return DeliveryRepository.update_rider_status(rider_id, status)
+
+    @staticmethod
+    def update_rider_vehicle(rider_id: int, vehicle_type: str) -> bool:
+        """Update rider vehicle type."""
+        # Normalize vehicle type - frontend sends 'bike' or 'car'
+        # but backend might expect 'bike'/'motorbike' or 'car'/'van'
+        return DeliveryRepository.update_rider_vehicle(rider_id, vehicle_type)

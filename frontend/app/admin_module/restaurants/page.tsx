@@ -245,7 +245,7 @@ export default function RestaurantsPage() {
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
+        <h1 className="text-3xl font-bold">
           Restaurant Management
         </h1>
         <button

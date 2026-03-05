@@ -10,6 +10,7 @@ export function ShiftTimer({ startTime }: ShiftTimerProps) {
 
   useEffect(() => {
     if (!startTime) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsed('00:00:00');
       return;
     }

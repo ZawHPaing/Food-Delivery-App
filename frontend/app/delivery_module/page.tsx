@@ -27,17 +27,26 @@ export default function Dashboard() {
     pickupOrder,
     completeOrder,
     sendMessage,
+    currentLocation,
   } = useDeliveryContext();
 
   const [mounted, setMounted] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const { isLoggedIn, user } = useAuth();
+  const [destinationCoords, setDestinationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [destinationType, setDestinationType] = useState<'shop' | 'customer' | null>(null);
+  const [startCoords, setStartCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [sheetYPosition, setSheetYPosition] = useState('60%'); // Controls the draggable sheet's vertical position
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
+    if (activeOrder || incomingRequests.length > 0) {
+      setSheetYPosition('0%');
+    }
+  }, [activeOrder, incomingRequests.length]);
+console.log(status)
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-slate-50">
       <DeliveryNavbar
@@ -49,18 +58,25 @@ export default function Dashboard() {
       <main className="flex-1 overflow-hidden flex flex-col max-w-2xl mx-auto w-full relative">
         <div className="p-4 space-y-4">
           {/* Status Toggle */}
-          <StatusToggle status={status} onToggle={toggleOnline} />
+          {status === "offline"  &&
+               <StatusToggle status={status} onToggle={toggleOnline} />
+          }
 
           {/* Map View */}
           <div className="animate-enter" style={{ animationDelay: '0.1s' }}>
-            <MapPlaceholder />
+            <MapPlaceholder 
+              riderLocation={currentLocation} 
+              destinationCoords={destinationCoords} 
+              destinationType={destinationType} 
+              startCoords={startCoords}
+            />
           </div>
         </div>
 
         {/* Draggable Requests Sheet */}
         <motion.div
           initial={{ y: '60%' }}
-          animate={{ y: activeOrder || incomingRequests.length > 0 ? '0%' : '60%' }}
+          animate={{ y: sheetYPosition }}
           drag="y"
           dragConstraints={{ top: -300, bottom: 0 }}
           dragElastic={0.1}
@@ -99,12 +115,19 @@ export default function Dashboard() {
                   onPickedUp={pickupOrder}
                   onComplete={completeOrder}
                   onSendMessage={sendMessage}
+                  onNavigateToDestination={(lat, lng, type, start) => {
+                    console.log("[page.tsx] Setting destination:", lat, lng, type, "Start:", start);
+                    setDestinationCoords({ latitude: lat, longitude: lng });
+                    setDestinationType(type);
+                    setStartCoords(start || null);
+                    setSheetYPosition('4%'); // Collapse the sheet to 30% height
+                  }}
                 />
               </section>
             )}
 
             {/* Incoming Requests */}
-            {!activeOrder && incomingRequests.length > 0 && (
+            {status === 'online' && !activeOrder && incomingRequests.length > 0 && (
               <section className="space-y-4 animate-enter">
                 <div className="flex items-center justify-between px-2">
                   <h2 className="text-lg font-bold text-foreground">
@@ -119,6 +142,7 @@ export default function Dashboard() {
                       queuePosition={index + 1}
                       onAccept={() => acceptOrder(request)}
                       onDecline={() => declineOrder(request.id)}
+                      riderLocation={currentLocation}
                     />
                   ))}
                 </div>

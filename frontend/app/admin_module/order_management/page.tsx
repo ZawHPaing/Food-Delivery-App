@@ -258,7 +258,7 @@ export default function OrderManagementPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold gradient-primary text-transparent bg-clip-text">
+        <h1 className="text-3xl font-bold">
           Order Management
         </h1>
         <div className="glass px-4 py-2 rounded-xl text-sm">

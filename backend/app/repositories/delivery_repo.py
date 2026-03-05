@@ -177,6 +177,22 @@ class DeliveryRepository:
         return response.data or []
     
     @staticmethod
+    def get_rider_location(rider_id: int) -> Optional[Dict]:
+        """Get rider's current latitude and longitude."""
+        try:
+            response = supabase.table("riders") \
+                .select("current_latitude, current_longitude") \
+                .eq("id", rider_id) \
+                .maybe_single() \
+                .execute()
+            data = getattr(response, "data", None)
+            if data is None:
+                return None
+            return data[0] if isinstance(data, list) and data else data
+        except Exception:
+            return None
+
+    @staticmethod
     def update_rider_status(rider_id: int, status: str) -> bool:
         """Update rider availability status. Avoids response.count > 0 when count is None."""
         try:
@@ -203,6 +219,17 @@ class DeliveryRepository:
                 "current_latitude": latitude,
                 "current_longitude": longitude,
                 "last_location_update": datetime.utcnow().isoformat(),
+            }).eq("id", rider_id).execute()
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def update_rider_vehicle(rider_id: int, vehicle_type: str) -> bool:
+        """Update rider vehicle type."""
+        try:
+            supabase.table("riders").update({
+                "vehicle_type": vehicle_type
             }).eq("id", rider_id).execute()
             return True
         except Exception:

@@ -28,7 +28,8 @@ router = APIRouter(prefix="/customer", tags=["Customer"])
 
 
 def get_current_customer_id(authorization: Optional[str] = Header(None, alias="Authorization")) -> int:
-    """Dependency: extract customer user_id from Bearer token."""
+    """Dependency: extract user_id from Bearer token.
+    Allows any authenticated user to use these customer-facing endpoints (e.g. for ordering)."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
     token = authorization.replace("Bearer ", "").strip()

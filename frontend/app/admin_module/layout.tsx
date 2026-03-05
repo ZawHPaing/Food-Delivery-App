@@ -80,7 +80,7 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} glass-card transition-all duration-300 flex flex-col m-4 rounded-2xl`}>
         <div className="p-6 flex items-center justify-between border-b border-border/30">
-          <h2 className={`text-xl font-bold gradient-primary text-transparent bg-clip-text ${!isSidebarOpen && 'hidden'}`}>
+          <h2 className={`text-xl font-bold ${!isSidebarOpen && 'hidden'}`}>
             Admin Panel
           </h2>
           <button 
