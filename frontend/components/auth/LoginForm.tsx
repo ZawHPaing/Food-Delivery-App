@@ -62,7 +62,7 @@ export default function LoginForm() {
             Welcome back
           </h1>
           <p className="text-neutral-500 text-sm mt-1 mb-6">
-            Sign in to continue to Foodie
+            Sign in to continue to Essential
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
@@ -129,7 +129,7 @@ export default function LoginForm() {
 
           <div className="mt-8 p-5 rounded-xl bg-gradient-to-br from-[#e4002b] to-[#ff6600] text-white shadow-md">
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] mb-4 opacity-90 text-center">
-              Partner with Foodie
+              Partner with Essential
             </p>
             <div className="grid grid-cols-1 gap-2.5">
               <Link 

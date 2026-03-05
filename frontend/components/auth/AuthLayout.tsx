@@ -24,7 +24,7 @@ export default function AuthLayout({
             <span className="text-white font-semibold text-sm">F</span>
           </div>
           <span className="font-semibold text-neutral-900 tracking-tight">
-            Foodie
+            Essential
           </span>
         </Link>
         <Link

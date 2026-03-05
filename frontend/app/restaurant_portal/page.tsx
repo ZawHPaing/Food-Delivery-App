@@ -27,7 +27,7 @@ export default function RestaurantPortalPage() {
             <span className="text-white font-semibold text-sm">F</span>
           </div>
           <span className="font-semibold text-neutral-900 tracking-tight">
-            Foodie
+            Essential
           </span>
         </Link>
         <span className="text-sm text-neutral-500 font-medium">
@@ -70,7 +70,7 @@ export default function RestaurantPortalPage() {
             </h1>
             <p className="text-neutral-500 text-sm mt-1 mb-6">
               {mode === "register"
-                ? "Join Foodie and start accepting orders."
+                ? "Join Essential and start accepting orders."
                 : "Sign in to manage your restaurant."}
             </p>
 

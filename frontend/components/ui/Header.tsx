@@ -82,7 +82,7 @@ export default function Header() {
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center shadow-md">
                 <span className="text-white font-bold text-xl">F</span>
               </div>
-              <span className="text-2xl font-bold text-[#e4002b]">Foodie</span>
+              <span className="text-2xl font-bold text-[#e4002b]">Essential</span>
             </div>
           </Link>
 

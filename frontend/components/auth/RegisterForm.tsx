@@ -66,7 +66,7 @@ export default function RegisterForm() {
             Create account
           </h1>
           <p className="text-neutral-500 text-sm mt-1 mb-5">
-            Join Foodie to order from the best restaurants
+            Join Essential to order from the best restaurants
           </p>
           <form onSubmit={handleSubmit} className="space-y-3.5">
             {error && (

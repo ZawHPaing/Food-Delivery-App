@@ -44,7 +44,7 @@ export default function DeliveryLandingPage() {
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-lg">F</span>
             </div>
-            <span className="text-xl font-bold text-gray-900 tracking-tight">Foodie</span>
+            <span className="text-xl font-bold text-gray-900 tracking-tight">Essential</span>
           </Link>
           <div className="flex items-center gap-3">
             {!isLoggedIn ? (
@@ -326,7 +326,7 @@ export default function DeliveryLandingPage() {
       <section className="py-24 bg-gray-50">
         <div className="container mx-auto px-8 md:px-16 lg:px-24">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Why ride with Foodie?</h2>
+            <h2 className="text-4xl font-bold mb-4">Why ride with Essential?</h2>
             <div className="w-20 h-1.5 bg-gradient-to-r from-[#e4002b] to-[#ff6600] mx-auto rounded-full" />
           </div>
 
@@ -428,7 +428,7 @@ export default function DeliveryLandingPage() {
                 <p className="text-[#ff6600] font-semibold text-sm">Delivery Partner</p>
               </div>
               <p className="text-gray-600 italic leading-relaxed text-lg">
-                "Working with Foodie is incredibly free and enjoyable. Even though we aren't related, the entire team treats each other like a close-knit family. Managing my own schedule allows me to pursue my studies while earning a stable income. It's been a perfect fit for my lifestyle."
+                "Working with Essential is incredibly free and enjoyable. Even though we aren't related, the entire team treats each other like a close-knit family. Managing my own schedule allows me to pursue my studies while earning a stable income. It's been a perfect fit for my lifestyle."
               </p>
             </div>
 
@@ -467,7 +467,7 @@ export default function DeliveryLandingPage() {
                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center">
                   <span className="text-white font-bold text-sm">F</span>
                 </div>
-                <span className="text-xl font-bold">Foodie</span>
+                <span className="text-xl font-bold">Essential</span>
               </div>
               <p className="text-gray-400 max-w-sm leading-relaxed">
                 Empowering riders and local businesses across the nation. 
@@ -492,7 +492,7 @@ export default function DeliveryLandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col md:row items-center justify-between gap-4">
-            <p className="text-gray-500 text-sm">© 2026 Foodie Delivery. All rights reserved.</p>
+            <p className="text-gray-500 text-sm">© 2026 Essential Delivery. All rights reserved.</p>
             <div className="flex gap-6 text-sm text-gray-500">
               <Link href="#" className="hover:text-white">Privacy Policy</Link>
               <Link href="#" className="hover:text-white">Terms of Service</Link>
