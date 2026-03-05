@@ -112,7 +112,20 @@ export default function Home() {
 
   const checkLocation = async () => {
     console.log("[LocationCheck] isLoggedIn:", isLoggedIn);
-    if (!isLoggedIn) {
+    console.log("[LocationCheck] user:", user);
+    
+    // Only proceed if logged in AND user is a customer
+    if (!isLoggedIn || !user) {
+      console.log("[LocationCheck] Not logged in, skipping");
+      return;
+    }
+
+    // Check if user is a customer
+    const userType = (user as any)?.user_type;
+    console.log("[LocationCheck] user_type:", userType);
+    
+    if (userType !== "customer") {
+      console.log("[LocationCheck] User is not a customer (type: " + userType + "), skipping location check");
       return;
     }
     
@@ -129,6 +142,12 @@ export default function Home() {
       });
       
       console.log("[LocationCheck] Response status:", res.status);
+      
+      if (res.status === 403) {
+        console.log("[LocationCheck] User is not a customer account, skipping");
+        return;
+      }
+      
       if (!res.ok) {
         const errText = await res.text();
         console.error("[LocationCheck] Fetch failed:", res.status, errText);
@@ -142,9 +161,13 @@ export default function Home() {
       const hasLocation = addresses.some((a: any) => a.latitude && a.longitude);
       console.log("[LocationCheck] hasLocation coordinates:", hasLocation);
       
-      // Show modal on every reload if logged in
-      console.log("[LocationCheck] Opening modal as requested for every reload");
-      setIsLocationModalOpen(true);
+      // Only show modal if user has no location or if they want to update it
+      if (!hasLocation) {
+        console.log("[LocationCheck] Opening modal to set location");
+        setIsLocationModalOpen(true);
+      } else {
+        console.log("[LocationCheck] User already has location, not showing modal");
+      }
     } catch (err) {
       console.error("[LocationCheck] Error:", err);
     }
@@ -267,8 +290,12 @@ export default function Home() {
       })
       .finally(() => setLoading(false));
 
+    // Run location check after auth state is loaded
     if (isLoggedIn) {
-      checkLocation();
+      // Small delay to ensure user object is populated
+      setTimeout(() => {
+        checkLocation();
+      }, 500);
     }
   }, [isLoggedIn]);
 
