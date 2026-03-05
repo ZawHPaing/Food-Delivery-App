@@ -35,7 +35,7 @@ interface TrackingData {
 }
 
 const STATUS_STEPS = [
-  { key: "pending", label: "Order Placed", icon: Clock, description: "Your order has been received" },
+  // { key: "pending", label: "Order Placed", icon: Clock, description: "Your order has been received" },
   // { key: "confirmed", label: "Confirmed", icon: CheckCircle2, description: "Restaurant confirmed your order" },
   // { key: "preparing", label: "Preparing", icon: ChefHat, description: "Your food is being prepared" },
   { key: "ready", label: "Ready", icon: Package, description: "Finding a delivery rider" },
