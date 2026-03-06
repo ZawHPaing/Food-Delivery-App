@@ -464,7 +464,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="font-bold text-lg mb-4">Foodie</h3>
+              <h3 className="font-bold text-lg mb-4">Essential</h3>
               <p className="text-gray-400 text-sm">
                 Your favorite food delivery app. Order from the best restaurants
                 in town.
@@ -547,7 +547,7 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>© 2024 Foodie. All rights reserved.</p>
+            <p>© 2024 Essential. All rights reserved.</p>
           </div>
         </div>
       </footer>

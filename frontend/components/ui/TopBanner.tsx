@@ -13,7 +13,7 @@ export default function TopBanner() {
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <svg
-            className="w-6 h-6"
+            className="w-6 h-6"re
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -30,12 +30,7 @@ export default function TopBanner() {
           </span>
         </div>
         <div className="flex items-center space-x-3">
-          <Link 
-            href="/restaurant_portal"
-            className="border-2 border-white px-4 py-1.5 rounded-lg font-semibold text-sm md:text-base hover:bg-white/10 transition-colors"
-          >
-            RESTAURANT PORTAL
-          </Link>
+        
           <Link 
             href="/delivery_module/landing"
             className="border-2 border-white px-4 py-1.5 rounded-lg font-semibold text-sm md:text-base hover:bg-white/10 transition-colors"

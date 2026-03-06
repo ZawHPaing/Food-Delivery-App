@@ -132,12 +132,7 @@ export default function LoginForm() {
               Partner with Essential
             </p>
             <div className="grid grid-cols-1 gap-2.5">
-              <Link 
-                href="/restaurant_portal"
-                className="border-2 border-white/40 px-4 py-2 rounded-lg font-semibold text-xs text-center hover:bg-white/10 hover:border-white transition-all uppercase tracking-wide"
-              >
-                RESTAURANT PORTAL
-              </Link>
+        
               <Link 
                 href="/delivery_module/landing"
                 className="border-2 border-white/40 px-4 py-2 rounded-lg font-semibold text-xs text-center hover:bg-white/10 hover:border-white transition-all uppercase tracking-wide"

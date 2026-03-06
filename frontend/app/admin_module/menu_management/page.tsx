@@ -1071,7 +1071,7 @@ const CategoryModal = ({
             Close
           </button>
         </div>
-      </div>
+      </div>f
     </div>
   );
 };

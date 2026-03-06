@@ -23,16 +23,7 @@ interface CategoryFilterProps {
   onCategorySelect?: (categoryId: string) => void;
 }
 
-const defaultCategories: Category[] = [
-  { id: "all", name: "All", icon: AllIcon },
-  { id: "fast-food", name: "Fast Food", icon: FastFoodIcon },
-  { id: "pizza", name: "Pizza", icon: PizzaIcon },
-  { id: "asian", name: "Asian", icon: AsianIcon },
-  { id: "desserts", name: "Desserts", icon: DessertsIcon },
-  { id: "beverages", name: "Beverages", icon: BeveragesIcon },
-  { id: "healthy", name: "Healthy", icon: HealthyIcon },
-  { id: "seafood", name: "Seafood", icon: SeafoodIcon },
-];
+const defaultCategories: Category[] = [];
 
 export default function CategoryFilter({
   categories = defaultCategories,
