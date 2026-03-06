@@ -26,7 +26,7 @@ export default function TopBanner() {
             />
           </svg>
           <span className="font-semibold text-sm md:text-base">
-            List your business on Foodie!
+            List your business on Essential!
           </span>
         </div>
         <div className="flex items-center space-x-3">

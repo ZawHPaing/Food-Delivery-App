@@ -27,17 +27,36 @@ const statusColor: Record<string, string> = {
 };
 
 export default function OrdersPage() {
-  const { isLoggedIn } = useCustomerAuth();
+  const { isLoggedIn, user } = useCustomerAuth();
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn) {
+      setLoading(false);
+      return;
+    }
+
+    console.log("Fetching orders for user:", user);
+    
     listOrders()
-      .then(setOrders)
-      .catch(() => setOrders([]))
+      .then((data) => {
+        console.log("Orders received:", data);
+        console.log("Number of orders:", data.length);
+        if (data.length > 0) {
+          console.log("First order:", data[0]);
+        }
+        setOrders(data);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error("Error fetching orders:", err);
+        setError(err.message || "Failed to load orders");
+        setOrders([]);
+      })
       .finally(() => setLoading(false));
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user]);
 
   if (!isLoggedIn) {
     return (
@@ -73,6 +92,12 @@ export default function OrdersPage() {
             Back to home
           </Link>
         </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+            Error: {error}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">

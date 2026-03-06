@@ -64,3 +64,42 @@ class AdminUserRepository:
         except Exception as e:
             print(f"Error deleting user {user_id}: {e}")
             return False
+
+    @staticmethod
+    def get_user_by_email(email: str) -> Optional[Dict]:
+        """Get user by email"""
+        try:
+            response = supabase.table("users") \
+                .select("*") \
+                .eq("email", email) \
+                .maybe_single() \
+                .execute()
+            return response.data if response.data else None
+        except Exception as e:
+            print(f"Error getting user by email {email}: {e}")
+            return None
+
+    @staticmethod
+    def update_user(user_id: int, user_data: dict) -> Optional[Dict]:
+        """Update user details"""
+        try:
+            print(f"Repository: Updating user {user_id} with data: {user_data}")
+            
+            response = supabase.table("users") \
+                .update(user_data) \
+                .eq("id", user_id) \
+                .execute()
+            
+            print(f"Repository: Raw response: {response}")
+            
+            if response.data and len(response.data) > 0:
+                print(f"Repository: Update successful: {response.data[0]}")
+                return response.data[0]
+            
+            print(f"Repository: Update returned no data")
+            return None
+        except Exception as e:
+            print(f"Repository: Error updating user {user_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            return None

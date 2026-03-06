@@ -2,10 +2,17 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from ..models.admin_user_models import UserResponse, UpdateUserRoleRequest
 from ..services.admin_user_service import AdminUserService
-# Removed supabase import - not needed anymore
+from ..repositories.admin_user_repo import AdminUserRepository  # Add this import
+from pydantic import BaseModel  # Add this for the update request model
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
+# Add a request model for user updates
+class UpdateUserRequest(BaseModel):
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
 
 # User Management Routes
 @router.get("/users/")
@@ -63,6 +70,48 @@ async def update_user_role(user_id: int, request: UpdateUserRoleRequest):
         )
 
     return user
+
+
+@router.put("/users/{user_id}")
+async def update_user(user_id: int, request: UpdateUserRequest):
+    """
+    Update user details (email, first_name, last_name, phone)
+    """
+    try:
+        print(f"=== UPDATE USER CALLED for user {user_id} ===")
+        print(f"Request data: {request.dict()}")
+        
+        # Extract allowed fields
+        update_data = {k: v for k, v in request.dict().items() if v is not None}
+        
+        print(f"Update data after filtering: {update_data}")
+        
+        if not update_data:
+            print("No valid fields to update")
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+        
+        # Call service to update user
+        updated_user = AdminUserService.update_user(user_id, update_data)
+        
+        if not updated_user:
+            print(f"Failed to update user {user_id}")
+            # Check if user exists
+            user = AdminUserService.get_user_by_id(user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            else:
+                raise HTTPException(status_code=400, detail="Failed to update user - possibly email already in use")
+        
+        print(f"User updated successfully: {updated_user}")
+        return updated_user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating user {user_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to update user: {str(e)}")
 
 
 @router.delete("/users/{user_id}")
@@ -164,15 +213,3 @@ async def get_dashboard_stats():
             status_code=500,
             detail="Failed to fetch dashboard statistics"
         )
-
-
-# ============================================================================
-# ALL RESTAURANT ROUTES HAVE BEEN REMOVED
-# They now live in restaurant_routes.py
-# 
-# Removed endpoints:
-# - GET  /admin/restaurants/
-# - GET  /admin/restaurants/{restaurant_id}
-# - PUT  /admin/restaurants/{restaurant_id}/approve
-# - DELETE /admin/restaurants/{restaurant_id}
-# ============================================================================

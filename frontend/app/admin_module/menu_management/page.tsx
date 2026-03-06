@@ -49,6 +49,12 @@ type MenuItemFormData = {
   category_ids: number[];
 };
 
+// Updated price formatter for Kyat
+const formatPrice = (cents: number) => {
+  // price_cents is already in Kyat (e.g., 8500 = 8,500 Ks)
+  return `${cents.toLocaleString()} Ks`;
+};
+
 export default function MenuManagementPage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
@@ -212,10 +218,10 @@ export default function MenuManagementPage() {
       // Ensure data is properly formatted
       const submitData = {
         name: itemData.name,
-        description: itemData.description,  // Keep as is (can be string or null)
+        description: itemData.description,
         price_cents: Number(itemData.price_cents),
         is_available: itemData.is_available,
-        image_url: itemData.image_url,      // Keep as is (can be string or null)
+        image_url: itemData.image_url,
         category_ids: itemData.category_ids.map(id => Number(id))
       };
       
@@ -318,8 +324,6 @@ export default function MenuManagementPage() {
     }
   };
 
-  const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
-
   if (error) {
     return (
       <div className="animate-fade-in">
@@ -339,32 +343,32 @@ export default function MenuManagementPage() {
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-  <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
-    Menu Management
-  </h1>
-  <div className="space-x-3">
-    <button
-      onClick={() => setShowCategoryModal(true)}
-      className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shadow-soft hover:shadow-lg"
-    >
-      Manage Categories
-    </button>
-    <button
-      onClick={() => setShowAddMenuModal(true)}
-      className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-soft hover:shadow-lg"
-      disabled={!selectedRestaurantId}
-    >
-      Add Menu
-    </button>
-    <button
-      onClick={() => setShowAddItemModal(true)}
-      className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-soft hover:shadow-lg"
-      disabled={!menuData?.menus.length}
-    >
-      Add Item
-    </button>
-  </div>
-</div>
+        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
+          Menu Management
+        </h1>
+        <div className="space-x-3">
+          <button
+            onClick={() => setShowCategoryModal(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shadow-soft hover:shadow-lg"
+          >
+            Manage Categories
+          </button>
+          <button
+            onClick={() => setShowAddMenuModal(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-soft hover:shadow-lg"
+            disabled={!selectedRestaurantId}
+          >
+            Add Menu
+          </button>
+          <button
+            onClick={() => setShowAddItemModal(true)}
+            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-soft hover:shadow-lg"
+            disabled={!menuData?.menus.length}
+          >
+            Add Item
+          </button>
+        </div>
+      </div>
 
       {/* Restaurant Selector */}
       <div className="mb-6 glass-card p-4 rounded-xl">
@@ -711,27 +715,15 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
   };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Remove any non-numeric characters except decimal point
-    let value = e.target.value.replace(/[^\d.]/g, '');
+    // Remove any non-numeric characters (allow only digits)
+    const value = e.target.value.replace(/[^\d]/g, '');
     
-    // Ensure only one decimal point
-    const parts = value.split('.');
-    if (parts.length > 2) {
-      value = parts[0] + '.' + parts.slice(1).join('');
-    }
+    // Parse the value as integer (Kyat has no decimals)
+    const kyat = parseInt(value) || 0;
     
-    // Limit to 2 decimal places
-    if (parts[1] && parts[1].length > 2) {
-      value = parts[0] + '.' + parts[1].slice(0, 2);
-    }
+    setFormData({ ...formData, price_cents: kyat });
     
-    // Parse the value
-    const dollars = parseFloat(value) || 0;
-    const cents = Math.max(0, Math.round(dollars * 100));
-    
-    setFormData({ ...formData, price_cents: cents });
-    
-    if (cents > 0 && errors.price) {
+    if (kyat > 0 && errors.price) {
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors.price;
@@ -754,7 +746,7 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
       const submitData: MenuItemFormData = {
         name: formData.name,
         description: formData.description?.trim() ? formData.description : null,
-        price_cents: Number(formData.price_cents),
+        price_cents: Number(formData.price_cents), // Already in Kyat
         is_available: formData.is_available,
         image_url: formData.image_url?.trim() ? formData.image_url : null,
         category_ids: formData.category_ids.map(id => Number(id))
@@ -843,29 +835,32 @@ const MenuItemModal = ({ menu, categories, item, onClose, onSave }: MenuItemModa
             />
           </div>
 
-          {/* Price Field */}
+          {/* Price Field - Updated for Kyat */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Price ($) <span className="text-red-500">*</span>
+              Price (Ks) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">Ks</span>
               <input
                 type="text"
-                value={(formData.price_cents / 100).toFixed(2)}
+                value={formData.price_cents || ''}
                 onChange={handlePriceChange}
-                className={`w-full border rounded-xl pl-8 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all ${
+                className={`w-full border rounded-xl pl-12 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all ${
                   errors.price ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="0.00"
+                placeholder="8500"
                 disabled={isSubmitting}
                 required
-                inputMode="decimal"
+                inputMode="numeric"
               />
             </div>
             {errors.price && (
               <p className="mt-1 text-xs text-red-500">{errors.price}</p>
             )}
+            <p className="text-xs text-gray-500 mt-1">
+              Enter price in Kyat (e.g., 8500 for 8,500 Ks)
+            </p>
           </div>
 
           {/* Image URL Field */}

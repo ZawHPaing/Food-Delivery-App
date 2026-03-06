@@ -10,30 +10,59 @@ function getToken(): string | null {
 
 async function customerFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount = 0
 ): Promise<T> {
   const token = getToken();
   if (!token) {
     throw new Error("Not logged in");
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(options.headers as Record<string, string>),
-    },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    let msg = "Request failed";
-    if (typeof data.detail === "string") msg = data.detail;
-    else if (Array.isArray(data.detail) && data.detail[0]?.msg) msg = data.detail[0].msg;
-    else if (data.detail && typeof data.detail === "object" && "message" in data.detail)
-      msg = (data.detail as { message: string }).message;
-    throw new Error(msg);
+
+  const maxRetries = 2;
+  
+  try {
+    console.log(`Fetching ${path}...`);
+    
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(options.headers as Record<string, string>),
+      },
+    });
+
+    const data = await res.json().catch(() => ({}));
+    
+    if (!res.ok) {
+      let msg = "Request failed";
+      if (typeof data.detail === "string") msg = data.detail;
+      else if (Array.isArray(data.detail) && data.detail[0]?.msg) msg = data.detail[0].msg;
+      else if (data.detail && typeof data.detail === "object" && "message" in data.detail)
+        msg = (data.detail as { message: string }).message;
+      throw new Error(msg);
+    }
+    
+    console.log(`Successfully fetched ${path}:`, data);
+    return data as T;
+  } catch (error: any) {
+    // Check for Windows socket error or network errors
+    const isNetworkError = error.message?.includes('WinError') || 
+                          error.message?.includes('socket') ||
+                          error.message?.includes('network') ||
+                          error.name === 'TypeError' ||
+                          error.message?.includes('fetch');
+    
+    if (isNetworkError && retryCount < maxRetries) {
+      console.log(`Network error, retrying (${retryCount + 1}/${maxRetries})...`);
+      // Wait 1 second before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return customerFetch<T>(path, options, retryCount + 1);
+    }
+    
+    console.error(`Error fetching ${path}:`, error);
+    throw error;
   }
-  return data as T;
 }
 
 // ----- Profile -----
@@ -219,7 +248,15 @@ export async function placeOrder(data: {
 }
 
 export async function listOrders(): Promise<OrderRecord[]> {
-  return customerFetch<OrderRecord[]>("/customer/orders");
+  try {
+    console.log("Fetching orders list...");
+    const orders = await customerFetch<OrderRecord[]>("/customer/orders");
+    console.log("Orders fetched:", orders);
+    return orders;
+  } catch (error) {
+    console.error("Failed to fetch orders:", error);
+    return []; // Return empty array instead of throwing
+  }
 }
 
 export async function getOrder(id: number): Promise<OrderRecord> {

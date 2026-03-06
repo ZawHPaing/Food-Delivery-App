@@ -80,9 +80,9 @@ export default function Header() {
           <Link href="/consumer_module" className="flex items-center space-x-2">
             <div className="flex items-center space-x-2">
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#e4002b] to-[#ff6600] flex items-center justify-center shadow-md">
-                <span className="text-white font-bold text-xl">F</span>
+                <span className="text-white font-bold text-xl">E</span>
               </div>
-              <span className="text-2xl font-bold text-[#e4002b]">Foodie</span>
+              <span className="text-2xl font-bold text-[#e4002b]">Essential</span>
             </div>
           </Link>
 
@@ -235,21 +235,7 @@ export default function Header() {
                         <span className="font-medium">Profile</span>
                       </Link>
 
-                      <button className="w-full px-4 py-3 flex items-center space-x-3 text-gray-800 hover:bg-gray-50 transition-colors">
-                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5a3 3 0 016 0v2H9V5z" />
-                        </svg>
-                        <span className="font-medium">Vouchers</span>
-                      </button>
-
-                      <button className="w-full px-4 py-3 flex items-center space-x-3 text-gray-800 hover:bg-gray-50 transition-colors">
-                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0a1 1 0 00.95.69h.02c.97 0 1.371 1.24.588 1.81a1 1 0 00-.364 1.118l.007.02c.3.921-.755 1.688-1.54 1.118a1 1 0 00-1.175 0c-.784.57-1.838-.197-1.539-1.118l.007-.02a1 1 0 00-.364-1.118c-.783-.57-.382-1.81.588-1.81h.02a1 1 0 00.95-.69z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10.5v10m-4-2h8" />
-                        </svg>
-                        <span className="font-medium">Rewards</span>
-                      </button>
+                      
                     </div>
 
                     <div className="border-t border-gray-200 my-1" />

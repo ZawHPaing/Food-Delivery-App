@@ -104,7 +104,7 @@ export default function SignupOverlay({ isOpen, onClose, onSwitchToLogin, onLogi
           <div className="text-center">
             {/* profile circle removed per request */}
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Create account</h2>
-            <p className="text-gray-600">Join Foodie for free delivery</p>
+            <p className="text-gray-600">Join Essential for free delivery</p>
           </div>
         </div>
 
